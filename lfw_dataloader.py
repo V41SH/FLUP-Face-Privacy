@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 from PIL import Image
+from PIL import ImageFilter
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
@@ -13,7 +14,7 @@ class LFWDataset(Dataset):
     Dataset loader for Labeled Faces in the Wild (LFW) dataset from Kaggle
     """
 
-    def __init__(self, root_dir, csv_file=None, transform=None, train=True, train_ratio=0.8, seed=42):
+    def __init__(self, root_dir, csv_file=None, transform=None, train=True, train_ratio=0.8, seed=42, blur_sigma=None):
         """
         Args:
             root_dir (string): Directory with all the images.
@@ -25,6 +26,7 @@ class LFWDataset(Dataset):
         """
         self.root_dir = root_dir
         self.transform = transform
+        self.blur_sigma = blur_sigma
 
         # Set up paths
         self.people_dir = os.path.join(root_dir, 'lfw-deepfunneled', 'lfw-deepfunneled')
@@ -70,6 +72,11 @@ class LFWDataset(Dataset):
         self.num_classes = len(label_map)
         self.class_names = {v: k for k, v in label_map.items()}
 
+    def apply_gaussian_blur(self, image):
+        if self.blur_sigma is not None and self.blur_sigma>0:
+            return image.filter(ImageFilter.GaussianBlur(self.blur_sigma))
+        return image
+
     def __len__(self):
         return len(self.indices)
 
@@ -81,6 +88,10 @@ class LFWDataset(Dataset):
 
         img_path = self.image_paths[real_idx]
         image = Image.open(img_path).convert('RGB')
+
+        # apply blur if specified
+        image = self.apply_gaussian_blur(image)
+
         label = self.labels[real_idx]
         name = self.names[real_idx]
 
@@ -94,7 +105,7 @@ class LFWDataset(Dataset):
         return self.class_names.get(label, "Unknown")
 
 
-def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42):
+def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42, blur_sigma=None):
     """
     Create train and test dataloaders for the LFW dataset
 
@@ -124,8 +135,8 @@ def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42):
     ])
 
     # Create datasets
-    train_dataset = LFWDataset(root_dir=root_dir, transform=train_transform, train=True, seed=seed)
-    test_dataset = LFWDataset(root_dir=root_dir, transform=test_transform, train=False, seed=seed)
+    train_dataset = LFWDataset(root_dir=root_dir, transform=train_transform, train=True, seed=seed, blur_sigma=blur_sigma)
+    test_dataset = LFWDataset(root_dir=root_dir, transform=test_transform, train=False, seed=seed, blur_sigma=blur_sigma)
 
     # Create dataloaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
@@ -172,7 +183,11 @@ if __name__ == "__main__":
     root_dir = 'data/lfw/'
 
     # Create dataloaders
-    train_loader, test_loader, num_classes = get_lfw_dataloaders(root_dir, batch_size=32)
+    train_loader, test_loader, num_classes = get_lfw_dataloaders(
+        root_dir,
+        batch_size=32,
+        blur_sigma=3
+    )
 
     print(f"Dataset loaded successfully with {num_classes} unique individuals")
     print(f"Training batches: {len(train_loader)}, Test batches: {len(test_loader)}")
