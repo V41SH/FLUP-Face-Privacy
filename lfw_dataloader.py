@@ -8,6 +8,8 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 import matplotlib.pyplot as plt
 
+from utils.blurring_utils import blur_face
+
 
 class LFWDataset(Dataset):
     """
@@ -74,7 +76,7 @@ class LFWDataset(Dataset):
 
     def apply_gaussian_blur(self, image):
         if self.blur_sigma is not None and self.blur_sigma>0:
-            return image.filter(ImageFilter.GaussianBlur(self.blur_sigma))
+            return blur_face(image, self.blur_sigma)
         return image
 
     def __len__(self):
