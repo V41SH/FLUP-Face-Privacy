@@ -5,13 +5,13 @@ from torch.optim.adam import Adam
 
 from lfw_dataloader import get_lfw_dataloaders
 
-# Create dataloaders
-train_loader, test_loader, num_classes = get_lfw_dataloaders(
-    "../", batch_size=8, blur_sigma=3
-)
+# # Create dataloaders
+# train_loader, test_loader, num_classes = get_lfw_dataloaders(
+#     "../", batch_size=8, blur_sigma=3
+# )
 
-print(f"Dataset loaded successfully with {num_classes} unique individuals")
-print(f"Training batches: {len(train_loader)}, Test batches: {len(test_loader)}")
+# print(f"Dataset loaded successfully with {num_classes} unique individuals")
+# print(f"Training batches: {len(train_loader)}, Test batches: {len(test_loader)}")
 
 if __name__ == "__main__":
 
@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     for epoch in range(epochs):
 
-        for batch_num, data in enumerate(zip(train_loader)):
+        for batch_num, data in enumerate(train_loader):
             # TODO need to work on this.
             # either redesign dataloader or apply different shuffles to the same dataloader...
 
@@ -56,4 +56,6 @@ if __name__ == "__main__":
             optimizer.step()
 
 
+    torch.save(blurnet, "blurnet.pt")
+    torch.save(sharpnet, "sharpnet.pt")
 
