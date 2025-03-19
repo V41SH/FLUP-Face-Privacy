@@ -11,7 +11,8 @@ def visualize_batch(batch_tensor):
     Visualizes a batch of images (shape: [batch_size, 3, H, W]) using matplotlib.
     """
     # Ensure the tensor is in the correct format (detach from computation graph)
-    batch_tensor = batch_tensor.detach().cpu()
+    # batch_tensor = batch_tensor.detach().cpu()
+    # batch_tensor = torch.cat(batch_tensor[0], batch_tensor[2])
 
     # Create a grid of images (normalize=False ensures original pixel values)
     grid = vutils.make_grid(batch_tensor, nrow=8, normalize=True, scale_each=True)
@@ -36,17 +37,22 @@ face_transform = transforms.Compose([
 ])
 
 # Initialize dataset
-dataset = CelebADataset(faceTransform=face_transform, dims=128, faceFactor=0.7, basicCrop=False)
-# Create DataLoader
-dataloader = DataLoader(dataset, batch_size=4, shuffle=True, num_workers=1)
+# dataset = CelebADataset(faceTransform=face_transform, dims=128, faceFactor=0.7, basicCrop=False)
+# # Create DataLoader
+# dataloader = DataLoader(dataset, batch_size=4, shuffle=True, num_workers=1)
 
-# Check batch
-data_iter = iter(dataloader)
-sample_batch = next(data_iter)
-print("Batch shape:", sample_batch.shape)  # Should be [64, 3, 128, 128]
-
-# visualize_batch(sample_batch)
+# # Check batch
+# data_iter = iter(dataloader)
+# sample_batch = next(data_iter)
 
 
-for i in  tqdm(dataloader): 
-    pass
+dataset = CelebADual(faceTransform=face_transform, dims=128, faceFactor=0.7, basicCrop=True)
+
+# for batch_tensor in dataset:
+for (image_sharp, label_sharp), (image_blur, label_blur) in dataset:
+    print(label_blur, label_sharp)
+    batch_tensor = torch.cat([image_sharp, image_blur])
+    visualize_batch(batch_tensor)
+    break
+
+# print("Batch shape:", np.array(sample_batch).size)  # Should be [64, 3, 128, 128]

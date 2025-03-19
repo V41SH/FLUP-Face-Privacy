@@ -28,6 +28,14 @@ if __name__ == "__main__":
 
     for epoch in range(epochs):
 
+        # for the celebA dataset
+        # from dataset import *
+
+        # dataset = CelebADual(faceTransform=face_transform, dims=128, faceFactor=0.7, basicCrop=True)
+        # for (image_sharp, label_sharp), (image_blur, label_blur) in dataset:
+            # pass
+
+
         for batch_num, data in enumerate(train_loader):
             # TODO need to work on this.
             # either redesign dataloader or apply different shuffles to the same dataloader...
