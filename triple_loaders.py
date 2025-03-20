@@ -152,8 +152,8 @@ def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42, blur_sig
     ])
 
     # Create datasets
-    train_dataset = LFWDataset(root_dir=root_dir, transform=train_transform, train=True, seed=seed, blur_sigma=blur_sigma)
-    test_dataset = LFWDataset(root_dir=root_dir, transform=test_transform, train=False, seed=seed, blur_sigma=blur_sigma)
+    train_dataset = LFWDatasetTriple(root_dir=root_dir, transform=train_transform, train=True, seed=seed, blur_sigma=blur_sigma)
+    test_dataset = LFWDatasetTriple(root_dir=root_dir, transform=test_transform, train=False, seed=seed, blur_sigma=blur_sigma)
 
     # Create dataloaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
