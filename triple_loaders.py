@@ -87,6 +87,9 @@ class LFWDatasetTriple(Dataset):
         return len(self.indices)
 
     def __getitem__(self, idx):
+
+        print("STARTED TO TRY TO MAYBE SOMETIMES BY CHANCE GET ITEM")
+
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
@@ -100,8 +103,10 @@ class LFWDatasetTriple(Dataset):
         # apply blur for same person, different image
         image_folder_path = os.path.abspath(os.path.join(img_path, os.pardir))
         image_list = os.listdir(image_folder_path)
-        image_list.remove(img_path) # cause we dont want to give the same img lol
+        image_list.remove(os.path.basename(img_path)) # cause we dont want to give the same img lol
         image_same_path = random.choice(image_list)
+        image_same_path = os.path.join(image_folder_path, image_same_path)
+        
         image_same_blur = self.apply_gaussian_blur(Image.open(image_same_path))
 
         # pick random pic and blur that boiiiii
@@ -115,6 +120,7 @@ class LFWDatasetTriple(Dataset):
         if self.transform:
             image = self.transform(image)
 
+        print("BY SOME MIRACLE FINALIZED GETTING THE PROMISED SHIT")
         return image, image_same_blur, rando_imag_blur
 
     def get_class_name(self, label):
