@@ -110,11 +110,12 @@ class LFWDatasetTriple(Dataset):
         image_same_blur = self.apply_gaussian_blur(Image.open(image_same_path))
 
         # pick random pic and blur that boiiiii
-        self.all_people.remove(image_folder_path)
+        self.all_people.remove(os.path.basename(image_folder_path))
         rando_person = random.choice(self.all_people)
-        self.all_people.append(image_folder_path)
-        rando_image = random.choice(os.listdir(os.path.join(self.people_dir, rando_person)))
-        rando_imag_blur = self.apply_gaussian_blur(Image.open(rando_image))
+        self.all_people.append(os.path.basename(image_folder_path))
+        rando_person_path = os.path.join(self.people_dir, rando_person)
+        rando_image = random.choice(os.listdir(rando_person_path))
+        rando_imag_blur = self.apply_gaussian_blur(Image.open(os.path.join(rando_person_path, rando_image)))
 
 
         if self.transform:
