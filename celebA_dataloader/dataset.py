@@ -6,7 +6,8 @@ import torchvision.transforms as transforms
 import numpy as np
 import cv2
 import re
-from cropper import *
+# from cropper import *
+from celebA_dataloader.cropper import *
 import torch.nn.functional as F
 
 

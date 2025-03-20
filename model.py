@@ -23,6 +23,8 @@ class SlayNet(nn.Module):
     def forward(self, x):
 
         batchsize = x.shape[0]
+        # print(x.shape)
+
 
         x = self.backbone(x)
         x = x.reshape(batchsize, -1) # flatten
