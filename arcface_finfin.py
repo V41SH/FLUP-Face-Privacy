@@ -74,31 +74,56 @@ class FaceVerifier:
         
         return embedding, bbox, face.det_score
     
+    def blur_face_region(self, img, bbox, sigma=3):
+        """Blur a face region in an image"""
+
+        # Make a copy to avoid modifying the original
+        result = img.copy()
+        
+        # Extract face coordinates
+        x1, y1, x2, y2 = [int(coord) for coord in bbox]
+        
+        # Extract the face region
+        face_region = result[y1:y2, x1:x2]
+        
+        # Apply Gaussian blur
+        blurred_face = cv2.GaussianBlur(face_region, (0, 0), sigma)
+        
+        # Replace the region in the original image
+        result[y1:y2, x1:x2] = blurred_face
+        
+        return result
+
     def load_and_process_image(self, img_path, blur_sigma=None):
-        """Load an image, apply blur if needed, and return it"""
-        # Load the image
-        img = Image.open(img_path).convert('RGB')
+        """Load an image, detect face, apply blur if needed, and return it"""
+        # Load the image with PIL
+        pil_img = Image.open(img_path).convert('RGB')
+        
+        # Convert to numpy array for processing
+        img = np.array(pil_img)
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         
         # Apply blur if specified
         if blur_sigma is not None and blur_sigma > 0:
-            img = blur_face(img, blur_sigma)
+            # Detect face first
+            faces = self.app.get(img)
+            if len(faces) > 0:
+                # Get the face with the highest detection score
+                face = max(faces, key=lambda x: x.det_score)
+                # Apply blur to the face region
+                img = self.blur_face_region(img, face.bbox, blur_sigma)
         
         return img
-    
+
     def compare_faces(self, img_path1, img_path2, blur_sigma=None):
         """Compare two face images and return similarity score"""
         # Load and process images
         img1 = self.load_and_process_image(img_path1, blur_sigma)
         img2 = self.load_and_process_image(img_path2, blur_sigma)
         
-        img1_np = np.array(img1)
-        img2_np = np.array(img2)
-        img1_np = cv2.cvtColor(img1_np, cv2.COLOR_RGB2BGR)
-        img2_np = cv2.cvtColor(img2_np, cv2.COLOR_RGB2BGR)
-        
         # Get embeddings
-        result1 = self.get_face_embedding(img1_np)
-        result2 = self.get_face_embedding(img2_np)
+        result1 = self.get_face_embedding(img1)
+        result2 = self.get_face_embedding(img2)
         
         if result1 is None or result2 is None:
             print("Face detection failed on one or both images")
@@ -110,8 +135,8 @@ class FaceVerifier:
         # Calculate similarity
         similarity = self.cosine_similarity(embedding1, embedding2)
         
-        return similarity, (img1_np, bbox1), (img2_np, bbox2), (score1, score2)
-    
+        return similarity, (img1, bbox1), (img2, bbox2), (score1, score2)
+
     def compare_blur_levels(self, img_path1, img_path2, blur_levels=[0, 1, 3, 5, 7, 10]):
         """Compare face verification results at different blur levels"""
         results = []
