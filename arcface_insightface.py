@@ -1,3 +1,9 @@
+##########################################################################################
+# AGHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+# THIS DOESN'T WORK WELL RN
+##########################################################################################
+
+
 import os
 import torch
 import torch.nn as nn
@@ -5,7 +11,7 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support, roc_curve, auc
 from tqdm import tqdm
 import cv2
 from sklearn.manifold import TSNE
@@ -14,6 +20,7 @@ from sklearn.manifold import TSNE
 import insightface
 from insightface.app import FaceAnalysis
 from insightface.data import get_image as ins_get_image
+from retinaface import RetinaFace
 
 # Only adapted it to Vaishnav's dataloader rn
 from lfw_dataloader import get_lfw_dataloaders
@@ -104,7 +111,7 @@ class InsightFaceBaseline:
         print(f"Reference database buildt. Processed {total} images, skipped {skipped}(no face detected).")
         return self.reference_embeddings
     
-    def identify_face(self, img, threshold=0.5):
+    def identify_face(self, img, threshold=0.1):
         """
         Identify a face by comparing with reference database embeddings
         """
@@ -135,7 +142,7 @@ class InsightFaceBaseline:
         
         return best_match, best_similarity, bbox
     
-    def evaluate(self, dataloader, threshold=0.5):
+    def evaluate(self, dataloader, threshold=0.3):
         """
         Evaluate the recognition performance on a dataset
         """

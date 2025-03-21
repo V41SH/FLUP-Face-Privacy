@@ -1,6 +1,6 @@
 
-#Stupid first attempt at a model idk what I was thinking
-#Probably not using this
+# Stupid first attempt at a model idk what I was thinking
+# Probably not using this
 
 import os
 import torch
