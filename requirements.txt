@@ -10,3 +10,4 @@ retina-face==0.0.17
 tf-keras==2.19.0
 pillow==11.1.0
 insightface==0.7.3
+onnxruntime==1.21.0
