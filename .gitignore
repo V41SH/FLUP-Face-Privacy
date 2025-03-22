@@ -4,3 +4,4 @@ data
 celebA 
 landmark.txt
 __pycache__
+.venv
