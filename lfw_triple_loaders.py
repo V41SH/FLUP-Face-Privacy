@@ -114,6 +114,9 @@ class LFWDatasetTriple(Dataset):
             positive = self.apply_gaussian_blur(Image.open(positive_image_path))
             negative = self.apply_gaussian_blur(Image.open(negative_image_path))
 
+        anchor_name = os.path.basename(os.path.dirname(anchor_path))
+        positive_name = os.path.basename(os.path.dirname(positive_image_path))
+        negative_name = os.path.basename(os.path.dirname(negative_image_path))
         # uncomment to test
         # anchor.show()
         # positive.show()
@@ -125,7 +128,7 @@ class LFWDatasetTriple(Dataset):
             negative = self.transform(negative)
 
         print("BY SOME MIRACLE FINALIZED GETTING THE PROMISED SHIT")
-        return anchor, positive, negative
+        return anchor, positive, negative, anchor_name, positive_name, negative_name
 
     def get_class_name(self, label):
         """Return the name of the person for a given label"""
@@ -193,4 +196,4 @@ if __name__ == "__main__":
     print(f"Training batches: {len(train_loader)}, Test batches: {len(test_loader)}")
 
 
-    im_1, im_2, im_3 = train_loader.dataset[0]
+    im_1, im_2, im_3, _, _, _ = train_loader.dataset[0]

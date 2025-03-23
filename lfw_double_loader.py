@@ -115,6 +115,9 @@ class LFWDatasetDouble(Dataset):
             image_1 = Image.open(img_1_path).convert('RGB')
             image_2 = Image.open(img_2_path).convert('RGB')
 
+        name1 = os.path.basename(os.path.dirname(img_1_path))
+        name2 = os.path.basename(os.path.dirname(img_2_path))
+
         # uncomment to test
         # image_1.show()
         # image_2.show()
@@ -124,7 +127,7 @@ class LFWDatasetDouble(Dataset):
             image_2 = self.transform(image_2)
 
         print("BY SOME MIRACLE FINALIZED GETTING THE PROMISED SHIT")
-        return image_1, image_2
+        return image_1, image_2, name1, name2
 
     def get_class_name(self, label):
         """Return the name of the person for a given label"""
@@ -191,4 +194,4 @@ if __name__ == "__main__":
     print(f"Dataset loaded successfully with {num_classes} unique individuals")
     print(f"Training batches: {len(train_loader)}, Test batches: {len(test_loader)}")
 
-    im_1, im_2 = train_loader.dataset[0]
+    im_1, im_2, _, _ = train_loader.dataset[0]
