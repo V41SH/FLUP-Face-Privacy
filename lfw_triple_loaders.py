@@ -10,6 +10,7 @@ from torchvision import transforms
 import matplotlib.pyplot as plt
 
 from utils.blurring_utils import blur_face
+from utils.lfw_utils import *
 
 class LFWDatasetTripleSharpAnchor(Dataset):
     """
@@ -48,7 +49,6 @@ class LFWDatasetTripleSharpAnchor(Dataset):
             person_dir = os.path.join(self.people_dir, person)
             if os.path.isdir(person_dir):
                 person_images = os.listdir(person_dir)
-                #self.all_images.extend(person_images)
 
                 # we want bros with more than one pics
                 if len(person_images) > 1:
@@ -97,32 +97,31 @@ class LFWDatasetTripleSharpAnchor(Dataset):
         label = self.labels[real_idx]
         name = self.names[real_idx]
 
-        img_path = self.image_paths[real_idx]
-        image = Image.open(img_path).convert('RGB')
+        anchor_path = self.image_paths[real_idx]
+        anchor = Image.open(anchor_path).convert('RGB')
 
-        # apply blur for same person, different image
-        image_folder_path = os.path.abspath(os.path.join(img_path, os.pardir))
-        image_list = os.listdir(image_folder_path)
-        image_list.remove(os.path.basename(img_path)) # cause we dont want to give the same img lol
-        image_same_path = random.choice(image_list)
-        image_same_path = os.path.join(image_folder_path, image_same_path)
-        
-        image_same_blur = self.apply_gaussian_blur(Image.open(image_same_path))
+        positive_image_path = get_same_person(anchor_path)
+        positive = self.apply_gaussian_blur(Image.open(positive_image_path))
 
         # pick random pic and blur that boiiiii
-        self.all_people.remove(os.path.basename(image_folder_path))
-        rando_person = random.choice(self.all_people)
-        self.all_people.append(os.path.basename(image_folder_path))
-        rando_person_path = os.path.join(self.people_dir, rando_person)
-        rando_image = random.choice(os.listdir(rando_person_path))
-        rando_imag_blur = self.apply_gaussian_blur(Image.open(os.path.join(rando_person_path, rando_image)))
+        # self.all_people.remove(os.path.basename(image_folder_path))
+        # rando_person = random.choice(self.all_people)
+        # self.all_people.append(os.path.basename(image_folder_path))
+        # rando_person_path = os.path.join(self.people_dir, rando_person)
+        # rando_image = random.choice(os.listdir(rando_person_path))
+        # rando_image_path = os.path.join(rando_person_path, rando_image)
+
+        negative_image_path = get_diff_person(anchor_path, self.all_people)
+        negative = self.apply_gaussian_blur(Image.open(negative_image_path))
 
 
         if self.transform:
-            image = self.transform(image)
+            anchor = self.transform(anchor)
+            positive = self.transform(positive)
+            negative = self.transform(negative)
 
         print("BY SOME MIRACLE FINALIZED GETTING THE PROMISED SHIT")
-        return image, image_same_blur, rando_imag_blur
+        return anchor, positive, negative
 
     def get_class_name(self, label):
         """Return the name of the person for a given label"""
@@ -166,7 +165,6 @@ class LFWDatasetTripleBlurAnchor(Dataset):
             person_dir = os.path.join(self.people_dir, person)
             if os.path.isdir(person_dir):
                 person_images = os.listdir(person_dir)
-                # self.all_images.extend(person_images)
 
                 # we want bros with more than one pics
                 if len(person_images) > 1:
