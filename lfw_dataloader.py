@@ -11,12 +11,13 @@ import matplotlib.pyplot as plt
 from utils.blurring_utils import blur_face
 
 
-class LFWDataset(Dataset):
+class LFWDatasetSingle(Dataset):
     """
     Dataset loader for Labeled Faces in the Wild (LFW) dataset from Kaggle
     """
 
-    def __init__(self, root_dir, csv_file=None, transform=None, train=True, train_ratio=0.8, seed=42, blur_sigma=None):
+    def __init__(self, root_dir, csv_file=None, transform=None, train=True, train_ratio=0.8, seed=42,
+                 blur_sigma=None):
         """
         Args:
             root_dir (string): Directory with all the images.
@@ -137,8 +138,8 @@ def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42, blur_sig
     ])
 
     # Create datasets
-    train_dataset = LFWDataset(root_dir=root_dir, transform=train_transform, train=True, seed=seed, blur_sigma=blur_sigma)
-    test_dataset = LFWDataset(root_dir=root_dir, transform=test_transform, train=False, seed=seed, blur_sigma=blur_sigma)
+    train_dataset = LFWDatasetSingle(root_dir=root_dir, transform=train_transform, train=True, seed=seed, blur_sigma=blur_sigma)
+    test_dataset = LFWDatasetSingle(root_dir=root_dir, transform=test_transform, train=False, seed=seed, blur_sigma=blur_sigma)
 
     # Create dataloaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)

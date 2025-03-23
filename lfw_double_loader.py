@@ -17,7 +17,8 @@ class LFWDatasetDouble(Dataset):
     Dataset loader for doubles; Labeled Faces in the Wild (LFW) dataset from Kaggle
     """
 
-    def __init__(self, root_dir, csv_file=None, transform=None, train=True, train_ratio=0.8, seed=42, same_person = False, blur_sigma=None):
+    def __init__(self, root_dir, csv_file=None, transform=None, train=True, train_ratio=0.8, seed=42,
+                 same_person = False, blur_sigma=None):
         """
         Args:
             root_dir (string): Directory with all the images.
@@ -26,6 +27,8 @@ class LFWDatasetDouble(Dataset):
             train (bool): Whether to load train or test split
             train_ratio (float): Ratio of data to use for training
             seed (int): Random seed for reproducibility
+            same_person (bool): Whether to return two images of same person
+            blur_sigma (float): Blurring sigma parameter
         """
         self.root_dir = root_dir
         self.transform = transform
@@ -37,7 +40,7 @@ class LFWDatasetDouble(Dataset):
 
         # Get all image paths and labels
         self.all_people = os.listdir(self.people_dir)
-        self.image_paths = []  # only with bros with more than one pic
+        self.image_paths = []  # only bros with more than one pic
         self.labels = []
         self.names = []
 
@@ -51,7 +54,7 @@ class LFWDatasetDouble(Dataset):
             if os.path.isdir(person_dir):
                 person_images = os.listdir(person_dir)
 
-                # we want bros with more than one pics
+                # we want bros with more than one pic
                 if len(person_images) > 1:
                     if person not in label_map:
                         label_map[person] = label_idx
@@ -103,7 +106,7 @@ class LFWDatasetDouble(Dataset):
         if self.same_person:
             img_2_path = get_same_person(img_1_path)
         else:
-            img_2_path = get_diff_person(img_1_path)
+            img_2_path = get_diff_person(img_1_path, self.people_dir, self.all_people)
 
         if self.blur_sigma is not None and self.blur_sigma > 0:
             image_1 = self.apply_gaussian_blur(Image.open(img_1_path).convert('RGB'))
@@ -124,7 +127,8 @@ class LFWDatasetDouble(Dataset):
         return self.class_names.get(label, "Unknown")
 
 
-def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42, same_person=False, blur_sigma=None):
+def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42,
+                        same_person=False, blur_sigma=None):
     """
     Create train and test dataloaders for the LFW dataset
 
