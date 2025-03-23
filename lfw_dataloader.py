@@ -171,11 +171,12 @@ def visualize_batch(dataloader, class_names=None, num_images=5):
         img = images[i].permute(1, 2, 0).numpy()
         img = np.clip(img, 0, 1)
 
-        axes[i].imshow(img)
+        axes.imshow(img)
         label_text = names[i] if class_names is None else class_names.get(labels[i].item(), "Unknown")
-        axes[i].set_title(f"{label_text}")
-        axes[i].axis('off')
+        axes.set_title(f"{label_text}")
+        axes.axis('off')
 
+    # axes.imshow(images)
     plt.tight_layout()
     plt.show()
 
@@ -198,4 +199,4 @@ if __name__ == "__main__":
     # Visualize a batch
     dataset = train_loader.dataset
     class_names = {i: dataset.get_class_name(i) for i in range(dataset.num_classes)}
-    visualize_batch(train_loader, class_names)
+    visualize_batch(train_loader, class_names, num_images=1)

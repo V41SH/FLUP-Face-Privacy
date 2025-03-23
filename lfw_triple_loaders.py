@@ -18,7 +18,7 @@ class LFWDatasetTriple(Dataset):
     """
 
     def __init__(self, root_dir, csv_file=None, transform=None, train=True, train_ratio=0.8, seed=42,
-                 anchor_blur = False, blur_sigma=None):
+                 anchor_blur = False, blur_sigma=3):
         """
         Args:
             root_dir (string): Directory with all the images.
@@ -114,6 +114,11 @@ class LFWDatasetTriple(Dataset):
             positive = self.apply_gaussian_blur(Image.open(positive_image_path))
             negative = self.apply_gaussian_blur(Image.open(negative_image_path))
 
+        # uncomment to test
+        # anchor.show()
+        # positive.show()
+        # negative.show()
+
         if self.transform:
             anchor = self.transform(anchor)
             positive = self.transform(positive)
@@ -170,3 +175,22 @@ def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42,
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
 
     return train_loader, test_loader, train_dataset.num_classes
+
+
+if __name__ == "__main__":
+    # Assuming LFW dataset is downloaded from Kaggle and extracted to 'data/lfw/'
+    root_dir = 'data/lfw/'
+
+    # Create dataloaders
+    train_loader, test_loader, num_classes = get_lfw_dataloaders(
+        root_dir,
+        batch_size=1,
+        anchor_blur=False,
+        blur_sigma=3
+    )
+
+    print(f"Dataset loaded successfully with {num_classes} unique individuals")
+    print(f"Training batches: {len(train_loader)}, Test batches: {len(test_loader)}")
+
+
+    im_1, im_2, im_3 = train_loader.dataset[0]

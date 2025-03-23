@@ -115,6 +115,10 @@ class LFWDatasetDouble(Dataset):
             image_1 = Image.open(img_1_path).convert('RGB')
             image_2 = Image.open(img_2_path).convert('RGB')
 
+        # uncomment to test
+        # image_1.show()
+        # image_2.show()
+
         if self.transform:
             image_1 = self.transform(image_1)
             image_2 = self.transform(image_2)
@@ -170,3 +174,21 @@ def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42,
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
 
     return train_loader, test_loader, train_dataset.num_classes
+
+
+if __name__ == "__main__":
+    # Assuming LFW dataset is downloaded from Kaggle and extracted to 'data/lfw/'
+    root_dir = 'data/lfw/'
+
+    # Create dataloaders
+    train_loader, test_loader, num_classes = get_lfw_dataloaders(
+        root_dir,
+        batch_size=1,
+        same_person=False,
+        blur_sigma=3
+    )
+
+    print(f"Dataset loaded successfully with {num_classes} unique individuals")
+    print(f"Training batches: {len(train_loader)}, Test batches: {len(test_loader)}")
+
+    im_1, im_2 = train_loader.dataset[0]
