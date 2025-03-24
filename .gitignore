@@ -5,3 +5,5 @@ celebA
 landmark.txt
 __pycache__
 .venv
+blur_evaluation_results/intermediate*.png
+blur_evaluation_results/intermediate*.txt
