@@ -1,4 +1,5 @@
 import os
+import random
 import numpy as np
 import pandas as pd
 from PIL import Image
@@ -9,15 +10,15 @@ from torchvision import transforms
 import matplotlib.pyplot as plt
 
 from utils.blurring_utils import blur_face
+from utils.lfw_utils import *
 
-
-class LFWDatasetSingle(Dataset):
+class LFWDatasetDouble(Dataset):
     """
-    Dataset loader for Labeled Faces in the Wild (LFW) dataset from Kaggle
+    Dataset loader for doubles; Labeled Faces in the Wild (LFW) dataset from Kaggle
     """
 
     def __init__(self, root_dir, csv_file=None, transform=None, train=True, train_ratio=0.8, seed=42,
-                 blur_sigma=None):
+                 same_person = False, blur_sigma=None):
         """
         Args:
             root_dir (string): Directory with all the images.
@@ -26,16 +27,20 @@ class LFWDatasetSingle(Dataset):
             train (bool): Whether to load train or test split
             train_ratio (float): Ratio of data to use for training
             seed (int): Random seed for reproducibility
+            same_person (bool): Whether to return two images of same person
+            blur_sigma (float): Blurring sigma parameter
         """
         self.root_dir = root_dir
         self.transform = transform
+        self.same_person = same_person
         self.blur_sigma = blur_sigma
 
         # Set up paths
         self.people_dir = os.path.join(root_dir, 'lfw-deepfunneled', 'lfw-deepfunneled')
 
         # Get all image paths and labels
-        self.image_paths = []
+        self.all_people = os.listdir(self.people_dir)
+        self.image_paths = []  # only bros with more than one pic
         self.labels = []
         self.names = []
 
@@ -49,15 +54,17 @@ class LFWDatasetSingle(Dataset):
             if os.path.isdir(person_dir):
                 person_images = os.listdir(person_dir)
 
-                if person not in label_map:
-                    label_map[person] = label_idx
-                    label_idx += 1
+                # we want bros with more than one pic
+                if len(person_images) > 1:
+                    if person not in label_map:
+                        label_map[person] = label_idx
+                        label_idx += 1
 
-                for img_name in person_images:
-                    if img_name.endswith('.jpg'):
-                        self.image_paths.append(os.path.join(person_dir, img_name))
-                        self.labels.append(label_map[person])
-                        self.names.append(person)
+                    for img_name in person_images:
+                        if img_name.endswith('.jpg'):
+                            self.image_paths.append(os.path.join(person_dir, img_name))
+                            self.labels.append(label_map[person])
+                            self.names.append(person)
 
         # Train/test split
         indices = np.arange(len(self.image_paths))
@@ -76,7 +83,7 @@ class LFWDatasetSingle(Dataset):
         self.class_names = {v: k for k, v in label_map.items()}
 
     def apply_gaussian_blur(self, image):
-        if self.blur_sigma is not None and self.blur_sigma>0:
+        if self.blur_sigma is not None and self.blur_sigma > 0:
             return blur_face(image, self.blur_sigma)
         return image
 
@@ -84,31 +91,51 @@ class LFWDatasetSingle(Dataset):
         return len(self.indices)
 
     def __getitem__(self, idx):
+
+        print("STARTED TO TRY TO MAYBE SOMETIMES BY CHANCE GET ITEM")
+
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
         real_idx = self.indices[idx]
-
-        img_path = self.image_paths[real_idx]
-        image = Image.open(img_path).convert('RGB')
-
-        # apply blur if specified
-        image = self.apply_gaussian_blur(image)
-
         label = self.labels[real_idx]
         name = self.names[real_idx]
 
-        if self.transform:
-            image = self.transform(image)
+        img_1_path = self.image_paths[real_idx]
 
-        return image, label, name
+        if self.same_person:
+            img_2_path = get_same_person(img_1_path)
+        else:
+            img_2_path = get_diff_person(img_1_path, self.people_dir, self.all_people)
+
+        if self.blur_sigma is not None and self.blur_sigma > 0:
+            image_1 = self.apply_gaussian_blur(Image.open(img_1_path).convert('RGB'))
+            image_2 = self.apply_gaussian_blur(Image.open(img_2_path).convert('RGB'))
+        else:
+            image_1 = Image.open(img_1_path).convert('RGB')
+            image_2 = Image.open(img_2_path).convert('RGB')
+
+        name1 = os.path.basename(os.path.dirname(img_1_path))
+        name2 = os.path.basename(os.path.dirname(img_2_path))
+
+        # uncomment to test
+        # image_1.show()
+        # image_2.show()
+
+        if self.transform:
+            image_1 = self.transform(image_1)
+            image_2 = self.transform(image_2)
+
+        print("BY SOME MIRACLE FINALIZED GETTING THE PROMISED SHIT")
+        return image_1, image_2, name1, name2
 
     def get_class_name(self, label):
         """Return the name of the person for a given label"""
         return self.class_names.get(label, "Unknown")
 
 
-def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42, blur_sigma=None):
+def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42,
+                        same_person=False, blur_sigma=None):
     """
     Create train and test dataloaders for the LFW dataset
 
@@ -117,6 +144,8 @@ def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42, blur_sig
         batch_size (int): Batch size for DataLoader
         img_size (int): Size to resize images to
         seed (int): Random seed for reproducibility
+        same_person (bool): Whether to use same person images or not
+        blur_sigma (float): Blurring sigma parameter
 
     Returns:
         train_loader, test_loader, num_classes
@@ -138,8 +167,10 @@ def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42, blur_sig
     ])
 
     # Create datasets
-    train_dataset = LFWDatasetSingle(root_dir=root_dir, transform=train_transform, train=True, seed=seed, blur_sigma=blur_sigma)
-    test_dataset = LFWDatasetSingle(root_dir=root_dir, transform=test_transform, train=False, seed=seed, blur_sigma=blur_sigma)
+    train_dataset = LFWDatasetDouble(root_dir=root_dir, transform=train_transform, train=True, seed=seed,
+                                                   same_person=same_person, blur_sigma=blur_sigma)
+    test_dataset = LFWDatasetDouble(root_dir=root_dir, transform=test_transform, train=False, seed=seed,
+                                                  same_person=same_person, blur_sigma=blur_sigma)
 
     # Create dataloaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
@@ -148,40 +179,6 @@ def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42, blur_sig
     return train_loader, test_loader, train_dataset.num_classes
 
 
-def visualize_batch(dataloader, class_names=None, num_images=5):
-    """
-    Visualize a batch of images from the dataloader
-
-    Args:
-        dataloader: PyTorch dataloader
-        class_names: Dictionary mapping class indices to names
-        num_images: Number of images to display
-    """
-    # Get a batch
-    images, labels, names = next(iter(dataloader))
-
-    # Unnormalize images
-    mean = torch.tensor([0.485, 0.456, 0.406]).reshape(1, 3, 1, 1)
-    std = torch.tensor([0.229, 0.224, 0.225]).reshape(1, 3, 1, 1)
-    images = images * std + mean
-
-    # Plot images
-    fig, axes = plt.subplots(1, num_images, figsize=(15, 3))
-    for i in range(num_images):
-        img = images[i].permute(1, 2, 0).numpy()
-        img = np.clip(img, 0, 1)
-
-        axes.imshow(img)
-        label_text = names[i] if class_names is None else class_names.get(labels[i].item(), "Unknown")
-        axes.set_title(f"{label_text}")
-        axes.axis('off')
-
-    # axes.imshow(images)
-    plt.tight_layout()
-    plt.show()
-
-
-# Example usage:
 if __name__ == "__main__":
     # Assuming LFW dataset is downloaded from Kaggle and extracted to 'data/lfw/'
     root_dir = 'data/lfw/'
@@ -189,14 +186,12 @@ if __name__ == "__main__":
     # Create dataloaders
     train_loader, test_loader, num_classes = get_lfw_dataloaders(
         root_dir,
-        batch_size=32,
+        batch_size=1,
+        same_person=False,
         blur_sigma=3
     )
 
     print(f"Dataset loaded successfully with {num_classes} unique individuals")
     print(f"Training batches: {len(train_loader)}, Test batches: {len(test_loader)}")
 
-    # Visualize a batch
-    dataset = train_loader.dataset
-    class_names = {i: dataset.get_class_name(i) for i in range(dataset.num_classes)}
-    visualize_batch(train_loader, class_names, num_images=1)
+    im_1, im_2, _, _ = train_loader.dataset[0]

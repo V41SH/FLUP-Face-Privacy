@@ -5,7 +5,7 @@ from torch.optim.adam import Adam
 import statistics
 from torchvision import transforms
 
-from triple_loaders import get_lfw_dataloaders
+from lfw_triple_loaders import get_lfw_dataloaders
 # from lfw_dataloader import get_lfw_dataloaders
 # # Create dataloaders
 # train_loader, test_loader, num_classes = get_lfw_dataloaders(
