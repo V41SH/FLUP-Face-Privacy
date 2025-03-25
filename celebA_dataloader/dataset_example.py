@@ -46,7 +46,7 @@ face_transform = transforms.Compose([
 # sample_batch = next(data_iter)
 
 
-dataset = CelebADual(faceTransform=face_transform, dims=128, faceFactor=0.7, basicCrop=True)
+dataset = CelebADual(faceTransform=face_transform, dims=128, faceFactor=0.7, crop='neural')
 
 # for batch_tensor in dataset:
 for (image_sharp, label_sharp), (image_blur, label_blur) in dataset:

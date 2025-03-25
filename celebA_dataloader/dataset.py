@@ -1,4 +1,5 @@
-import os 
+import os, sys
+from pathlib import Path
 import torch
 from torch.utils.data import Dataset, DataLoader
 from PIL import Image
@@ -6,16 +7,24 @@ import torchvision.transforms as transforms
 import numpy as np
 import cv2
 import re
-# from cropper import *
-from celebA_dataloader.cropper import *
+from cropper import *
+import random
+# from celebA_dataloader.cropper import *
 import torch.nn.functional as F
+
+current_file = Path(__file__).resolve()
+project_root = current_file.parent.parent
+sys.path.append(str(project_root))
+
+from utils.blurring_utils import blur_face
 
 
 class CelebADataset(Dataset):
-    def __init__(self, transform=None, faceTransform=None, dims=128, faceFactor=0.7, basicCrop=False):
-        self.basicCrop = basicCrop
+    def __init__(self, transform=None, faceTransform=None, dims=128, faceFactor=0.7, crop="neural", triplet=False):
+        self.crop = crop 
         self.faceFactor = faceFactor
         self.dims = dims
+        self.triplet = triplet
         self.img_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../celebA/Img/img_celeba/"))
 
         self.transform = transform
@@ -30,7 +39,7 @@ class CelebADataset(Dataset):
             lines = file.readlines()
             self.bbox_anno = {line.split()[0]: list(map(int, line.split()[1:])) for line in lines[2:]}
 
-        if not self.basicCrop:
+        if self.crop == 'transform':
             with open(os.path.join(os.path.dirname(__file__), "landmark.txt"), "r") as file:
                 line = file.readline()
                 n_landmark = len(re.split('[ ]+', line)[1:]) // 2
@@ -41,18 +50,27 @@ class CelebADataset(Dataset):
 
     def __len__(self):
         return len(self.image_filenames)
+    
+
+    def apply_gaussian_blur(self, image):
+        self.blur_sigma = 0.5
+        if self.blur_sigma is not None and self.blur_sigma>0:
+            return blur_face(image, self.blur_sigma)
+        return image
+
 
     def __getitem__(self, idx):
         filename = self.image_filenames[idx]
         img_path = os.path.join(self.img_dir, filename)
         image = transforms.ToTensor()(Image.open(img_path).convert("RGB"))
+        og = None
 
         if self.transform:
             image = self.transform(image)
 
         # if self.faceTransform:
 
-        if self.basicCrop:
+        if self.crop == 'basic':
             x, y, w, h = self.bbox_anno[filename]
 
             # scale the image a little - ensure that the face is approximately the same size, 
@@ -83,22 +101,20 @@ class CelebADataset(Dataset):
                 padding = 0
 
             if self.faceTransform:
+                og = image.copy_()
                 image[:, y + padding:y + padding + h, x + padding:x + padding + w] = self.faceTransform(image[:, y + padding:y + padding + h, x + padding:x + padding + w])
             image = image[:, yp + padding : yp + padding + hp, xp + padding : xp + padding + wp]
+            og = og[:, yp + padding : yp + padding + hp, xp + padding : xp + padding + wp]
 
             image = np.array(image.permute(1, 2, 0), dtype=np.uint8)
-            # print(image.shape)
-            if image.shape[0] == 0: 
-                print(wp, hp, yp + padding, yp + padding + hp)
-                # cv2.imshow("bruh", image)
-                # cv2.waitKey(0)
-                # cv2.destroyAllWindows()
-
             image = cv2.resize(image, [self.dims, self.dims])
             image = torch.from_numpy(image).permute(2, 0, 1).float()  # Normalize back to [0,1]
 
+            og = np.array(og.permute(1, 2, 0), dtype=np.uint8)
+            og = cv2.resize(og, [self.dims, self.dims])
+            og = torch.from_numpy(og).permute(2, 0, 1).float()  # Normalize back to [0,1]
 
-        else:
+        elif self.crop == 'transform':
             # Get face bounding box
             x, y, w, h = self.bbox_anno[filename]
 
@@ -130,13 +146,62 @@ class CelebADataset(Dataset):
             # convert back to tensor
             image = torch.from_numpy(image).permute(2, 0, 1).float()  # Normalize back to [0,1]
 
-        return image, self.identity[filename]
+        elif self.crop == 'neural':
+            # Get face bounding box
+            x, y, w, h = self.bbox_anno[filename]
+
+            # scale the image a little - ensure that the face is approximately the same size, 
+            # according to the final crop size. assuming square crop size
+            scale = self.dims / (h * 1.3) # to scale the image to approximately the same size as crop
+            image = np.array(image.permute(1, 2, 0)*255, dtype=np.uint8)
+            image = cv2.resize(image, [int(image.shape[1] * scale), int(image.shape[0] * scale)])
+
+            # Get face bounding box
+            x = int(x * scale) 
+            y = int(y * scale) 
+            w = int(w * scale) 
+            h = int(h * scale) 
+
+            image = torch.from_numpy(image).permute(2, 0, 1).float()  # Normalize back to [0,1]
+
+            # put the blurred image back 
+            # if self.faceTransform:
+            #     image[:, y:y+h, x:x+w] = self.faceTransform(image[:, y:y+h, x:x+w])
+
+            # do the landmark stuff
+            image = align_crop_opencv(np.array(image.permute(1, 2, 0), dtype=np.uint8),  # Convert tensor to OpenCV format
+                                            self.landmark_anno[int(filename[:-4])-1] * scale,  # Get source landmarks
+                                            self.std_landmark_anno,
+                                            crop_size=self.dims,
+                                            face_factor=self.faceFactor)
+
+
+            # blur the image 
+            og = image.copy()
+            image = self.apply_gaussian_blur(Image.fromarray(image, 'RGB'))
+
+            # convert back to tensor
+            og = torch.from_numpy(image).permute(2, 0, 1).float()
+            image = torch.from_numpy(image).permute(2, 0, 1).float()  # Normalize back to [0,1]
+        
+        if self.triplet: 
+            target_id = self.identity[filename]
+            same_id_images = [i for i, id_val in self.identity.items() if id_val == target_id and i != filename]
+
+            if not same_id_images:
+                #      anchor, blurred, id
+                return og, image, target_id 
+            else:
+                random_filename = random.choice(same_id_images)
+
+        else: 
+            return image, self.identity[filename]
 
 
 class CelebADual(): 
-    def __init__(self, transform=None, faceTransform=None, dims=128, faceFactor=0.7, basicCrop=False, batch_size=32, shuffle=True):
-        self.unBlurDataset = CelebADataset(transform=transform, faceTransform=faceTransform, dims=dims, faceFactor=faceFactor, basicCrop=basicCrop)
-        self.BlurDataset = CelebADataset(transform=transform, faceTransform=None, dims=dims, faceFactor=faceFactor, basicCrop=basicCrop)
+    def __init__(self, transform=None, faceTransform=None, dims=128, faceFactor=0.7, crop='neural', batch_size=32, shuffle=True):
+        self.unBlurDataset = CelebADataset(transform=transform, faceTransform=faceTransform, dims=dims, faceFactor=faceFactor, crop=crop)
+        self.BlurDataset = CelebADataset(transform=transform, faceTransform=None, dims=dims, faceFactor=faceFactor, crop=crop)
 
         # Create dataloaders for both versions
         self.unBlurLoader = DataLoader(self.unBlurDataset, batch_size=batch_size, shuffle=shuffle)
@@ -146,4 +211,10 @@ class CelebADual():
         # Zip the two dataloaders so they return corresponding batches
         return zip(iter(self.unBlurLoader), iter(self.BlurLoader))
 
+class CelebATriple(): 
+    def __init__(self):
+        pass
+
+    def __iter__(self):
+        pass
     
