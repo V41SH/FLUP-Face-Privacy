@@ -7,3 +7,4 @@ __pycache__
 .venv
 blur_evaluation_results/intermediate*.png
 blur_evaluation_results/intermediate*.txt
+test.py

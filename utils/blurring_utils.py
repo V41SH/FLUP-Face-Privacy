@@ -3,8 +3,7 @@ import cv2
 from PIL import Image, ImageFilter
 import numpy as np
 
-
-def blur_face(image, blur_sigma):
+def detect_face(image):
     # Initialize InsightFace FaceAnalysis
     face_analyzer = FaceAnalysis(providers=['CPUExecutionProvider'])
     face_analyzer.prepare(ctx_id=0, det_size=(640, 640))
@@ -16,6 +15,11 @@ def blur_face(image, blur_sigma):
     # Detect faces using InsightFace
     faces = face_analyzer.get(img_cv)
 
+    return faces
+
+
+def blur_face(image, blur_sigma):
+    faces = detect_face(image)
     # If no faces then return the original image
     if faces is None or len(faces) == 0:
         return image
