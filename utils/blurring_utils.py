@@ -46,3 +46,24 @@ def blur_face(image, blur_sigma, blur_fn=None):
             result_img.paste(blurred_face, (x1, y1))
 
     return result_img
+
+
+
+def black_blur_fn(image_region):
+    return Image.new("RGB", image_region.size, color=(0, 0, 0))
+
+def pixelation_blur_fn(image_region, pixel_size=10):
+    """
+    Applies a pixelation effect by resizing down and up again.
+    """
+    # Get original size
+    width, height = image_region.size
+
+    # Resize down to small size (pixelate), then resize back up
+    small = image_region.resize(
+        (max(1, width // pixel_size), max(1, height // pixel_size)),
+        resample=Image.NEAREST
+    )
+    pixelated = small.resize((width, height), Image.NEAREST)
+
+    return pixelated

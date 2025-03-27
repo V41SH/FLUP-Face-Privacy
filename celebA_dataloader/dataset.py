@@ -22,7 +22,7 @@ from utils.blurring_utils import blur_face
 
 
 class CelebADataset(Dataset):
-    def __init__(self, transform=None, dims=128, faceFactor=0.7, triplet=False, blur_sigma=None, train=True, train_ratio=0.8, seed=42, blur_fn=None):
+    def __init__(self, transform=None, dims=128, faceFactor=0.7, triplet=False, blur_sigma=None, train=True, train_ratio=0.8, seed=42, blur_fn=None, anchor_blur=True, same_person=False, blur_both=False):
         self.faceFactor = faceFactor
         self.blur_sigma = blur_sigma
         self.dims = dims
@@ -30,6 +30,9 @@ class CelebADataset(Dataset):
         self.transform = transform
         self.train_ratio = train_ratio
         self.blur_fn = blur_fn
+        self.anchor_blur = anchor_blur
+        self.same_person = same_person
+        self.blur_both = blur_both
 
         self.img_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../celebA/Img/img_celeba/"))
         self.image_filenames = [f for f in os.listdir(self.img_dir) if f.endswith(('.jpg', '.png'))]
@@ -93,7 +96,7 @@ class CelebADataset(Dataset):
                                         crop_size=[blurImg.height, blurImg.width],
                                         face_factor=self.faceFactor)
         
-        return Image.fromarray(blurImg, 'RGB')
+        return Image.fromarray(blurImg[:, :, ::-1], "RGB")
 
 
     def __getitem__(self, idx):
@@ -101,33 +104,54 @@ class CelebADataset(Dataset):
         img_path = os.path.join(self.img_dir, filename)
         identity = self.identity[filename]
 
-        blurImg = Image.open(img_path).convert("RGB")
-        unblurImg = blurImg.copy()
+        anchor = Image.open(img_path).convert("RGB")
+        positive = anchor.copy()
 
         # center the eyes and the face in the middle of the image
-        blurImg = self.getFace(blurImg, filename)
+        anchor = self.getFace(anchor, filename)
         # crop the image to the bounding box of the face + add blurring
-        blurImg = self.apply_gaussian_blur(blurImg)
+        # if self.anchor_blur:
+        #     anchor = self.apply_gaussian_blur(anchor)
 
         if self.transform:
-            blurImg = self.transform(blurImg)
+            anchor = self.transform(anchor)
     
         if self.triplet: 
-            same_id_images = [i for i, id_val in self.identity.items() if id_val == identity and i != filename]
+            if self.same_person:
+                same_id_images = [i for i, id_val in self.identity.items() if id_val == identity and i != filename]
+            else: 
+                same_id_images = [i for i, id_val in self.identity.items() if id_val != identity and i != filename]
+
 
             if not same_id_images:
-                return unblurImg, blurImg, identity 
+                if self.anchor_blur or self.blur_both: 
+                    anchor = self.apply_gaussian_blur(anchor)
+                if not self.anchor_blur or self.blur_both: 
+                    positive = self.apply_gaussian_blur(positive)
+
+                return positive, anchor, identity 
+
             else:
                 random_filename = random.choice(same_id_images)
                 img_path = os.path.join(self.img_dir, random_filename)
 
-                new_unblur = self.getFace(Image.open(img_path).convert("RGB"), random_filename)
+                random_positive = self.getFace(Image.open(img_path).convert("RGB"), random_filename)
+
                 if self.transform: 
-                    new_unblur = self.transform(new_unblur)
-                return new_unblur, blurImg, identity 
+                    random_positive = self.transform(random_positive)
+
+                if self.anchor_blur or self.blur_both: 
+                    anchor = self.apply_gaussian_blur(anchor)
+                if not self.anchor_blur or self.blur_both: 
+                    random_positive = self.apply_gaussian_blur(random_positive)
+
+                return random_positive, anchor, identity 
 
         else: 
-            return blurImg, self.identity[filename]
+            if self.anchor_blur or self.blur_both: 
+                anchor = self.apply_gaussian_blur(anchor)
+            
+            return anchor, identity 
 
 
 class CelebATriplet():
@@ -176,20 +200,6 @@ class CelebATriplet():
             )
 
 
-class CelebADual(): 
-    def __init__(self, transform=None, dims=128, faceFactor=0.7, batch_size=32):
-        self.unBlurDataset = CelebADataset(transform=transform, faceTransform=faceTransform, dims=dims, faceFactor=faceFactor, basicCrop=basicCrop)
-        self.BlurDataset = CelebADataset(transform=transform, faceTransform=None, dims=dims, faceFactor=faceFactor, basicCrop=basicCrop)
-
-        # Create dataloaders for both versions
-        self.unBlurLoader = DataLoader(self.unBlurDataset, batch_size=batch_size, shuffle=shuffle)
-        self.BlurLoader = DataLoader(self.BlurDataset, batch_size=batch_size, shuffle=shuffle)
-
-    def __iter__(self):
-        # Zip the two dataloaders so they return corresponding batches
-        return zip(iter(self.unBlurLoader), iter(self.BlurLoader))
-
-    
 
 def getCelebADataLoader(batch_size=32, img_size=224, seed=42, blur_sigma=None, blur_fn=None):
 
@@ -279,51 +289,36 @@ if __name__ == "__main__":
     # face_transform = transforms.Compose([
     #     transforms.GaussianBlur(kernel_size=15, sigma=(10, 20)),  # Apply Gaussian blur with random sigma
     # ])
-    # train_transform = transforms.Compose([
-    #     transforms.Resize((200, 200)),
-    #     transforms.RandomHorizontalFlip(),
-    #     transforms.RandomRotation(10),
-    #     transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),
-    #     transforms.ToTensor(),
-    #     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    # ])
+    train_transform = transforms.Compose([
+        transforms.Resize((200, 200)),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(10),
+        transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
 
     # dataset = CelebADataset(triplet=True, transform=train_transform, seed=123, blur_sigma=7)
+    dataset = CelebADataset(triplet=True, transform=train_transform, seed=123, blur_sigma=7, same_person=True, blur_both=True)
 
-    # visualize_batch(dataset[0])
+    visualize_batch(dataset[0])
+    
 
     # # Initialize dataset
     # dataset = CelebADataset(transform=train_transform)
-    # # # Create DataLoader
+    # # Create DataLoader
     # dataloader = DataLoader(dataset, batch_size=4, shuffle=True, num_workers=1)
     # data_iter = iter(dataloader)
     # sample_batch = next(data_iter)
     # visualize_batch(sample_batch)
 
-    def black_blur_fn(image_region):
-        return Image.new("RGB", image_region.size, color=(0, 0, 0))
-
-    def pixelation_blur_fn(image_region, pixel_size=10):
-        """
-        Applies a pixelation effect by resizing down and up again.
-        """
-        # Get original size
-        width, height = image_region.size
-
-        # Resize down to small size (pixelate), then resize back up
-        small = image_region.resize(
-            (max(1, width // pixel_size), max(1, height // pixel_size)),
-            resample=Image.NEAREST
-        )
-        pixelated = small.resize((width, height), Image.NEAREST)
-
-        return pixelated
 
 
-    train, test = getCelebADataLoader(batch_size=1, blur_sigma=7, seed=123, blur_fn=pixelation_blur_fn)
-    data_iter = iter(train)
-    sample_batch = next(data_iter)
-    visualize_batch(sample_batch)
+    # train, test = getCelebADataLoader(batch_size=1, blur_sigma=7, seed=123, blur_fn=None)
+    # train = CelebASameLabelPairs(transforms=train_transform, batch_size=4, samePerson=True)
+    # data_iter = iter(train)
+    # sample_batch = next(data_iter)
+    # visualize_batch(sample_batch)
 
     # # Check batch
 

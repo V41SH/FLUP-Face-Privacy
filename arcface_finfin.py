@@ -201,15 +201,14 @@ class FaceVerifier:
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Evaluate blur effects on face verification')
-    parser.add_argument('--root_dir', type=str, required=True, help='Root directory of LFW dataset')
+    parser.add_argument('--root_dir', type=str, required=True, help='Root directory of the dataset')
     parser.add_argument('--num_pairs', type=int, default=100, help='Number of image pairs to evaluate')
-    parser.add_argument('--report_interval', type=int, default=10, 
-                       help='Interval at which to save intermediate results')
-    parser.add_argument('--blur_levels', type=int, nargs='+', default=[0, 1, 3, 5, 7, 10],
-                       help='Blur levels to evaluate')
+    parser.add_argument('--report_interval', type=int, default=10, help='Interval at which to save intermediate results')
+    parser.add_argument('--blur_levels', type=int, nargs='+', default=[0, 1, 3, 5, 7, 10], help='Blur levels to evaluate')
     parser.add_argument('--det_size', type=int, default=640, help='Detection size for InsightFace')
-    parser.add_argument('--save_path', type=str, default="blur_evaluation_results",
-                       help='Directory to save results')
+    parser.add_argument('--save_path', type=str, default="blur_evaluation_results", help='Directory to save results')
+    parser.add_argument('--dataset', type=str, default='lfw', choices=['lfw', 'celeba'], help='Which dataset to use: lfw or celeba')
+    
     return parser.parse_args()
 
 def main():
@@ -219,12 +218,16 @@ def main():
     face_verifier = FaceVerifier(det_size=(args.det_size, args.det_size))
     
     # Create dataset with same_person=True
-    dataset = LFWDatasetDouble(
-        root_dir=args.root_dir,
-        transform=None,  # We'll handle transforms in the verifier
-        train=True,      # Use training split
-        same_person=True # Only get pairs of the same person
-    )
+    if args.dataset == "lfw":
+        dataset = LFWDatasetDouble(
+            root_dir=args.root_dir,
+            transform=None,  # We'll handle transforms in the verifier
+            train=True,      # Use training split
+            same_person=True # Only get pairs of the same person
+        )
+    elif args.dataset == "celeba": 
+        #create celeba dataset here
+        pass
     
     print(f"Evaluating blur effects on {args.num_pairs} image pairs...")
     
