@@ -1,3 +1,4 @@
+import torch
 from insightface.app import FaceAnalysis
 import cv2
 from PIL import Image, ImageFilter
@@ -6,7 +7,14 @@ import numpy as np
 def detect_face(image):
     # Initialize InsightFace FaceAnalysis
     # face_analyzer = FaceAnalysis(providers=['CPUExecutionProvider'])
-    face_analyzer = FaceAnalysis(providers=['CUDAExecutionProvider'])
+    providers = [
+    ('CUDAExecutionProvider', {
+        'device_id': 0,
+    }),
+    'CPUExecutionProvider',
+    ]
+
+    face_analyzer = FaceAnalysis(providers=providers)
     face_analyzer.prepare(ctx_id=0, det_size=(640, 640))
 
     # Convert PIL image to cv2 format for InsightFace

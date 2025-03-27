@@ -1,6 +1,6 @@
+import torch
 from model import SlayNet
 import torch.nn as nn
-import torch
 from torch.optim.adam import Adam
 import statistics
 from torchvision import transforms

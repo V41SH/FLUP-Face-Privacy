@@ -1,10 +1,10 @@
+import torch
 import os
 import random
 import numpy as np
 import pandas as pd
 from PIL import Image
 from PIL import ImageFilter
-import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 import matplotlib.pyplot as plt
