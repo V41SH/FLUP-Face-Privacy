@@ -118,9 +118,9 @@ class LFWDatasetTriple(Dataset):
         positive_name = os.path.basename(os.path.dirname(positive_image_path))
         negative_name = os.path.basename(os.path.dirname(negative_image_path))
         # uncomment to test
-        # anchor.show()
-        # positive.show()
-        # negative.show()
+        anchor.show()
+        positive.show()
+        negative.show()
 
         if self.transform:
             anchor = self.transform(anchor)
