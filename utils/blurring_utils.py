@@ -5,7 +5,7 @@ from PIL import Image, ImageFilter
 import numpy as np
 
 from batch_face import RetinaFace
-detector = RetinaFace(gpu_id=None)
+detector = RetinaFace(gpu_id=-1)
 
 
 # def detect_face(image):
