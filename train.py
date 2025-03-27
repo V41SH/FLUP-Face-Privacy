@@ -7,7 +7,7 @@ from torchvision import transforms
 
 from lfw_triple_loaders import get_lfw_dataloaders
 # from lfw_dataloader import get_lfw_dataloaders
-# # Create dataloaders
+ # # Create dataloaders
 # train_loader, test_loader, num_classes = get_lfw_dataloaders(
 #     "../lfw", batch_size=8, blur_sigma=3
 # )
@@ -22,18 +22,21 @@ from lfw_triple_loaders import get_lfw_dataloaders
 # ])
 
 
+
 if __name__ == "__main__":
 
     # dualdataset = CelebADual(faceTransform=face_transform, dims=128, faceFactor=0.7, basicCrop=True)
 
-    train_loader, test_loader, _ = get_lfw_dataloaders("./data/lfw", blur_sigma=3)
+    ba_train_loader, ba_test_loader, _ = get_lfw_dataloaders("./data/lfw", blur_sigma=3, anchor_blur=True)
+    sa_train_loader, sa_test_loader, _ = get_lfw_dataloaders("./data/lfw", blur_sigma=3, anchor_blur=False)
 
 
-    print("Dataset loaded")
+    print("Datasets were loaded")
     
     lr = 2e-4
     epochs = 20
     epslon = 1e-6
+
     # loss_criterion = nn.BCELoss()
     # similarity_criterion = nn.CosineEmbeddingLoss()
     triplet_loss = nn.TripletMarginLoss()
@@ -52,19 +55,35 @@ if __name__ == "__main__":
 
 
         # for (image_sharp, label_sharp), (image_blur, label_blur) in dualdataset:
-        for idx, (anchor_sharp, positive_blur, negative_blur) in enumerate(train_loader):
+        for idx, (
+            anchor_sharp, positive_blur, negative_blur,
+            anchor_blur, positive_sharp, negative_sharp
+            ) in enumerate(zip(ba_train_loader, sa_train_loader)):
             
             optimizer.zero_grad()
             
-            positive_embed = blurnet(positive_blur)
-            negative_embed = blurnet(negative_blur)
-            anchor_embed = sharpnet(anchor_sharp)
-            
-            # # is_same_person = torch.eq(label_blur, label_sharp).float()
-            # is_same_person = torch.where(label_blur == label_sharp, 1, -1)
-            # loss = similarity_criterion(embed_blur, embed_sharp, is_same_person)
-            loss = triplet_loss(anchor_embed, positive_embed, negative_embed)
+            # train sharp network
 
+            anchor_sharp_embed = sharpnet(anchor_sharp)
+            with torch.no_grad():
+                blurnet.eval()
+                positive_blur_embed = blurnet(positive_blur)
+                negative_blur_embed = blurnet(negative_blur)
+            
+            sharp_loss = triplet_loss(anchor_sharp_embed, positive_blur_embed, negative_blur_embed)
+
+
+            # train blur network
+
+            anchor_blur_embed = blurnet(anchor_blur)
+            with torch.no_grad():
+                sharpnet.eval()
+                positive_sharp_embed = sharpnet(positive_sharp)
+                negative_sharp_embed = sharpnet(negative_sharp)
+            
+            blur_loss = triplet_loss(anchor_blur_embed, positive_sharp_embed, negative_sharp_embed)
+
+            loss = (blur_loss + sharp_loss)
             
             loss.backward()
 
