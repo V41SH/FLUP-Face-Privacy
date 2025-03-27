@@ -18,31 +18,31 @@ def detect_face(image):
     return faces
 
 
-def blur_face(image, blur_sigma):
+def blur_face(image, blur_sigma, blur_fn=None):
     faces = detect_face(image)
+
     # If no faces then return the original image
     if faces is None or len(faces) == 0:
         return image
 
     result_img = image.copy()
 
-    # For each detected face
     for face in faces:
-        # Get the bounding box coordinates
         bbox = face.bbox.astype(int)
         x1, y1, x2, y2 = bbox[0], bbox[1], bbox[2], bbox[3]
 
-        # Ensure coordinates are within image bounds
         x1, y1 = max(0, x1), max(0, y1)
         x2, y2 = min(image.width, x2), min(image.height, y2)
 
-        # Only process if we have a valid region
         if x2 > x1 and y2 > y1:
-            # Crop and blur the face region
             face_region = result_img.crop((x1, y1, x2, y2))
-            blurred_face = face_region.filter(ImageFilter.GaussianBlur(blur_sigma))
 
-            # Paste the blurred face back into the image
+            # Apply custom blur function if provided
+            if blur_fn is not None:
+                blurred_face = blur_fn(face_region)
+            else:
+                blurred_face = face_region.filter(ImageFilter.GaussianBlur(blur_sigma))
+
             result_img.paste(blurred_face, (x1, y1))
 
     return result_img

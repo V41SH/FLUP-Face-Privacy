@@ -22,13 +22,14 @@ from utils.blurring_utils import blur_face
 
 
 class CelebADataset(Dataset):
-    def __init__(self, transform=None, dims=128, faceFactor=0.7, triplet=False, blur_sigma=None, train=True, train_ratio=0.8, seed=42):
+    def __init__(self, transform=None, dims=128, faceFactor=0.7, triplet=False, blur_sigma=None, train=True, train_ratio=0.8, seed=42, blur_fn=None):
         self.faceFactor = faceFactor
         self.blur_sigma = blur_sigma
         self.dims = dims
         self.triplet = triplet
         self.transform = transform
         self.train_ratio = train_ratio
+        self.blur_fn = blur_fn
 
         self.img_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../celebA/Img/img_celeba/"))
         self.image_filenames = [f for f in os.listdir(self.img_dir) if f.endswith(('.jpg', '.png'))]
@@ -67,7 +68,7 @@ class CelebADataset(Dataset):
 
     def apply_gaussian_blur(self, image):
         if self.blur_sigma is not None and self.blur_sigma>0:
-            return blur_face(image, self.blur_sigma)
+            return blur_face(image, self.blur_sigma, blur_fn=self.blur_fn)
         return image
     
     def getFace(self, blurImg, filename): 
@@ -130,11 +131,11 @@ class CelebADataset(Dataset):
 
 
 class CelebATriplet():
-    def __init__(self, transforms=None, train=True, train_ratio=0.8, batch_size=32, img_size=224, seed=42, blur_sigma=None):
+    def __init__(self, transforms=None, train=True, train_ratio=0.8, batch_size=32, img_size=224, seed=42, blur_sigma=None, blur_fn=None):
         self.data_dual = CelebADataset(transform=transforms, triplet=True, blur_sigma=blur_sigma,
-                                       train=train, train_ratio=train_ratio, seed=seed)
+                                       train=train, train_ratio=train_ratio, seed=seed, blur_fn=blur_fn)
         self.data_single = CelebADataset(transform=transforms, triplet=False, blur_sigma=blur_sigma,
-                                         train=train, train_ratio=train_ratio, seed=seed)
+                                         train=train, train_ratio=train_ratio, seed=seed, blur_fn=blur_fn)
 
         self.batch_size = batch_size
         self.rng = random.Random(seed)
@@ -175,9 +176,22 @@ class CelebATriplet():
             )
 
 
+class CelebADual(): 
+    def __init__(self, transform=None, dims=128, faceFactor=0.7, batch_size=32):
+        self.unBlurDataset = CelebADataset(transform=transform, faceTransform=faceTransform, dims=dims, faceFactor=faceFactor, basicCrop=basicCrop)
+        self.BlurDataset = CelebADataset(transform=transform, faceTransform=None, dims=dims, faceFactor=faceFactor, basicCrop=basicCrop)
+
+        # Create dataloaders for both versions
+        self.unBlurLoader = DataLoader(self.unBlurDataset, batch_size=batch_size, shuffle=shuffle)
+        self.BlurLoader = DataLoader(self.BlurDataset, batch_size=batch_size, shuffle=shuffle)
+
+    def __iter__(self):
+        # Zip the two dataloaders so they return corresponding batches
+        return zip(iter(self.unBlurLoader), iter(self.BlurLoader))
+
     
 
-def getCelebADataLoader(batch_size=32, img_size=224, seed=42, blur_sigma=None):
+def getCelebADataLoader(batch_size=32, img_size=224, seed=42, blur_sigma=None, blur_fn=None):
 
     train_transform = transforms.Compose([
         transforms.Resize((img_size, img_size)),
@@ -194,8 +208,8 @@ def getCelebADataLoader(batch_size=32, img_size=224, seed=42, blur_sigma=None):
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-    train = CelebATriplet(transforms=train_transform, train=True, batch_size=batch_size, img_size=img_size, seed=seed, blur_sigma=blur_sigma)
-    test = CelebATriplet(transforms=test_transform, train=False, batch_size=batch_size, img_size=img_size, seed=seed, blur_sigma=blur_sigma)
+    train = CelebATriplet(transforms=train_transform, train=True, batch_size=batch_size, img_size=img_size, seed=seed, blur_sigma=blur_sigma, blur_fn=blur_fn)
+    test = CelebATriplet(transforms=test_transform, train=False, batch_size=batch_size, img_size=img_size, seed=seed, blur_sigma=blur_sigma, blur_fn=blur_fn)
 
     return train, test
 
@@ -286,7 +300,27 @@ if __name__ == "__main__":
     # sample_batch = next(data_iter)
     # visualize_batch(sample_batch)
 
-    train, test = getCelebADataLoader(batch_size=1, blur_sigma=7, seed=123)
+    def black_blur_fn(image_region):
+        return Image.new("RGB", image_region.size, color=(0, 0, 0))
+
+    def pixelation_blur_fn(image_region, pixel_size=10):
+        """
+        Applies a pixelation effect by resizing down and up again.
+        """
+        # Get original size
+        width, height = image_region.size
+
+        # Resize down to small size (pixelate), then resize back up
+        small = image_region.resize(
+            (max(1, width // pixel_size), max(1, height // pixel_size)),
+            resample=Image.NEAREST
+        )
+        pixelated = small.resize((width, height), Image.NEAREST)
+
+        return pixelated
+
+
+    train, test = getCelebADataLoader(batch_size=1, blur_sigma=7, seed=123, blur_fn=pixelation_blur_fn)
     data_iter = iter(train)
     sample_batch = next(data_iter)
     visualize_batch(sample_batch)
