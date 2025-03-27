@@ -5,7 +5,8 @@ import numpy as np
 
 def detect_face(image):
     # Initialize InsightFace FaceAnalysis
-    face_analyzer = FaceAnalysis(providers=['CPUExecutionProvider'])
+    # face_analyzer = FaceAnalysis(providers=['CPUExecutionProvider'])
+    face_analyzer = FaceAnalysis(providers=['CUDAExecutionProvider'])
     face_analyzer.prepare(ctx_id=0, det_size=(640, 640))
 
     # Convert PIL image to cv2 format for InsightFace

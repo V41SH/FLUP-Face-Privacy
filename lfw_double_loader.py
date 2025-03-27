@@ -92,7 +92,7 @@ class LFWDatasetDouble(Dataset):
 
     def __getitem__(self, idx):
 
-        print("STARTED TO TRY TO MAYBE SOMETIMES BY CHANCE GET ITEM")
+        # print("STARTED TO TRY TO MAYBE SOMETIMES BY CHANCE GET ITEM")
 
         if torch.is_tensor(idx):
             idx = idx.tolist()

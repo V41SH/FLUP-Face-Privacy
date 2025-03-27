@@ -92,7 +92,7 @@ class LFWDatasetTriple(Dataset):
 
     def __getitem__(self, idx):
 
-        print("STARTED TO TRY TO MAYBE SOMETIMES BY CHANCE GET ITEM")
+        # print("TRIPLE STARTED")
 
         if torch.is_tensor(idx):
             idx = idx.tolist()
@@ -127,7 +127,7 @@ class LFWDatasetTriple(Dataset):
             positive = self.transform(positive)
             negative = self.transform(negative)
 
-        print("BY SOME MIRACLE FINALIZED GETTING THE PROMISED SHIT")
+        # print("BY SOME MIRACLE FINALIZED GETTING THE PROMISED SHIT")
         return anchor, positive, negative, anchor_name, positive_name, negative_name
 
     def get_class_name(self, label):

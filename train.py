@@ -11,8 +11,8 @@ from lfw_triple_loaders import get_lfw_dataloaders
 # train_loader, test_loader, num_classes = get_lfw_dataloaders(
 #     "../lfw", batch_size=8, blur_sigma=3
 # )
-# print(f"Dataset loaded successfully with {num_classes} unique individuals")
-# print(f"Training batches: {len(train_loader)}, Test batches: {len(test_loader)}")
+# eprint(f"Dataset loaded successfully with {num_classes} unique individuals")
+# eprint(f"Training batches: {len(train_loader)}, Test batches: {len(test_loader)}")
 
 # for the celebA dataset
 # from celebA_dataloader.dataset import CelebADual
@@ -21,7 +21,12 @@ from lfw_triple_loaders import get_lfw_dataloaders
 #     transforms.GaussianBlur(kernel_size=15, sigma=(10, 20)),  # Apply Gaussian blur with random sigma
 # ])
 
+import sys
 
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 if __name__ == "__main__":
 
@@ -31,7 +36,7 @@ if __name__ == "__main__":
     sa_train_loader, sa_test_loader, _ = get_lfw_dataloaders("./data/lfw", blur_sigma=3, anchor_blur=False)
 
 
-    print("Datasets were loaded")
+    eprint("Datasets were loaded")
     
     lr = 2e-4
     epochs = 20
@@ -39,17 +44,17 @@ if __name__ == "__main__":
 
     # loss_criterion = nn.BCELoss()
     # similarity_criterion = nn.CosineEmbeddingLoss()
-    triplet_loss = nn.TripletMarginLoss()
+    triplet_loss = nn.TripletMarginLoss().to(device)
 
-    blurnet = SlayNet(inputsize=128, embedding_size=512)
-    sharpnet = SlayNet(inputsize=128, embedding_size=512)
+    blurnet = SlayNet(inputsize=128, embedding_size=512).to(device)
+    sharpnet = SlayNet(inputsize=128, embedding_size=512).to(device)
 
     optimizer = Adam(params=list(blurnet.parameters()) + list(sharpnet.parameters()), lr=lr)
 
 
     for epoch in range(epochs):
 
-        print(f"Epoch {epoch}")
+        eprint(f"Epoch {epoch}")
 
         losses = []
 
@@ -60,38 +65,61 @@ if __name__ == "__main__":
             anchor_blur, positive_sharp, negative_sharp
             ) in enumerate(zip(ba_train_loader, sa_train_loader)):
             
+            anchor_sharp = anchor_sharp.to(device)
+            positive_blur = positive_blur.to(device)
+            negative_blur = negative_blur.to(device)
+            anchor_blur = anchor_blur.to(device)
+            positive_sharp = positive_sharp.to(device)
+            negative_sharp = negative_sharp.to(device)
+
             optimizer.zero_grad()
             
             # train sharp network
+            sharpnet.train()
+
+            eprint("Training sharp")
 
             anchor_sharp_embed = sharpnet(anchor_sharp)
+            eprint("Got embedding for sharp")
             with torch.no_grad():
                 blurnet.eval()
                 positive_blur_embed = blurnet(positive_blur)
+                eprint("Got embedding for posblur")
                 negative_blur_embed = blurnet(negative_blur)
+                eprint("Got embedding for negblur")
             
             sharp_loss = triplet_loss(anchor_sharp_embed, positive_blur_embed, negative_blur_embed)
+            eprint("Got tripletloss")
 
 
             # train blur network
+            blurnet.train()
+
 
             anchor_blur_embed = blurnet(anchor_blur)
+            eprint("Got embedding for blur anchor")
             with torch.no_grad():
                 sharpnet.eval()
                 positive_sharp_embed = sharpnet(positive_sharp)
+                eprint("Got embedding for possharp")
                 negative_sharp_embed = sharpnet(negative_sharp)
+                eprint("Got embedding for negsharp")
             
             blur_loss = triplet_loss(anchor_blur_embed, positive_sharp_embed, negative_sharp_embed)
+            eprint("Got tripletloss")
 
             loss = (blur_loss + sharp_loss)
             
             loss.backward()
 
-            losses.append(loss.item())
+            lossval = loss.item()
+            losses.append(lossval)
+            # print("Lossval is: ", lossval, end=", ")
+            print("Lossval is: ", lossval)
 
             optimizer.step()
 
-        print(f"Average loss is {statistics.mean(losses)}")
+        eprint(f"Average loss is {statistics.mean(losses)}")
 
     torch.save(blurnet, "blurnet.pt")
     torch.save(sharpnet, "sharpnet.pt")
