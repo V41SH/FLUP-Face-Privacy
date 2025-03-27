@@ -118,9 +118,9 @@ class LFWDatasetTriple(Dataset):
         positive_name = os.path.basename(os.path.dirname(positive_image_path))
         negative_name = os.path.basename(os.path.dirname(negative_image_path))
         # uncomment to test
-        anchor.show()
-        positive.show()
-        negative.show()
+        # anchor.show()
+        # positive.show()
+        # negative.show()
 
         if self.transform:
             anchor = self.transform(anchor)
@@ -174,8 +174,10 @@ def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42,
                                     anchor_blur=anchor_blur, blur_sigma=blur_sigma)
 
     # Create dataloaders
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+    NUM_WORKERS=4
+    NUM_WORKERS=0
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=NUM_WORKERS)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=NUM_WORKERS)
 
     return train_loader, test_loader, train_dataset.num_classes
 

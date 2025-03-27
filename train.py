@@ -1,5 +1,5 @@
 import torch
-from model import SlayNet
+from slaymodel import SlayNet
 import torch.nn as nn
 from torch.optim.adam import Adam
 import statistics
