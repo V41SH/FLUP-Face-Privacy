@@ -128,7 +128,8 @@ class LFWDatasetTriple(Dataset):
             negative = self.transform(negative)
 
         # print("BY SOME MIRACLE FINALIZED GETTING THE PROMISED SHIT")
-        return anchor, positive, negative, anchor_name, positive_name, negative_name
+        return anchor, positive, negative #, anchor_name, positive_name, negative_name
+        # return anchor, positive, negative, anchor_name, positive_name, negative_name
 
     def get_class_name(self, label):
         """Return the name of the person for a given label"""

@@ -3,6 +3,7 @@ from slaymodel import SlayNet
 import torch.nn as nn
 from torch.optim.adam import Adam
 import statistics
+from datetime import datetime
 from torchvision import transforms
 
 from lfw_triple_loaders import get_lfw_dataloaders
@@ -32,8 +33,8 @@ if __name__ == "__main__":
 
     # dualdataset = CelebADual(faceTransform=face_transform, dims=128, faceFactor=0.7, basicCrop=True)
 
-    ba_train_loader, ba_test_loader, _ = get_lfw_dataloaders("./data/lfw", blur_sigma=3, anchor_blur=True)
-    sa_train_loader, sa_test_loader, _ = get_lfw_dataloaders("./data/lfw", blur_sigma=3, anchor_blur=False)
+    ba_train_loader, ba_test_loader, _ = get_lfw_dataloaders("./data/lfw", batch_size=16, blur_sigma=3, anchor_blur=True)
+    sa_train_loader, sa_test_loader, _ = get_lfw_dataloaders("./data/lfw", batch_size=16, blur_sigma=3, anchor_blur=False)
 
 
     eprint("Datasets were loaded")
@@ -46,8 +47,8 @@ if __name__ == "__main__":
     # similarity_criterion = nn.CosineEmbeddingLoss()
     triplet_loss = nn.TripletMarginLoss().to(device)
 
-    blurnet = SlayNet(inputsize=128, embedding_size=512).to(device)
-    sharpnet = SlayNet(inputsize=128, embedding_size=512).to(device)
+    blurnet = SlayNet(inputsize=224, embedding_size=512).to(device)
+    sharpnet = SlayNet(inputsize=224, embedding_size=512).to(device)
 
     optimizer = Adam(params=list(blurnet.parameters()) + list(sharpnet.parameters()), lr=lr)
 
@@ -61,8 +62,8 @@ if __name__ == "__main__":
 
         # for (image_sharp, label_sharp), (image_blur, label_blur) in dualdataset:
         for idx, (
-            anchor_sharp, positive_blur, negative_blur,
-            anchor_blur, positive_sharp, negative_sharp
+            (anchor_sharp, positive_blur, negative_blur),
+            (anchor_blur, positive_sharp, negative_sharp)
             ) in enumerate(zip(ba_train_loader, sa_train_loader)):
             
             anchor_sharp = anchor_sharp.to(device)
@@ -77,19 +78,21 @@ if __name__ == "__main__":
             # train sharp network
             sharpnet.train()
 
-            eprint("Training sharp")
+            # eprint("Training sharp")
+
+            # eprint("ANCHOR SHARP SHAPE", anchor_sharp.shape)
 
             anchor_sharp_embed = sharpnet(anchor_sharp)
-            eprint("Got embedding for sharp")
+            # eprint("Got embedding for sharp")
             with torch.no_grad():
                 blurnet.eval()
                 positive_blur_embed = blurnet(positive_blur)
-                eprint("Got embedding for posblur")
+                # eprint("Got embedding for posblur")
                 negative_blur_embed = blurnet(negative_blur)
-                eprint("Got embedding for negblur")
+                # eprint("Got embedding for negblur")
             
             sharp_loss = triplet_loss(anchor_sharp_embed, positive_blur_embed, negative_blur_embed)
-            eprint("Got tripletloss")
+            # eprint("Got tripletloss")
 
 
             # train blur network
@@ -97,16 +100,16 @@ if __name__ == "__main__":
 
 
             anchor_blur_embed = blurnet(anchor_blur)
-            eprint("Got embedding for blur anchor")
+            # eprint("Got embedding for blur anchor")
             with torch.no_grad():
                 sharpnet.eval()
                 positive_sharp_embed = sharpnet(positive_sharp)
-                eprint("Got embedding for possharp")
+                # eprint("Got embedding for possharp")
                 negative_sharp_embed = sharpnet(negative_sharp)
-                eprint("Got embedding for negsharp")
+                # eprint("Got embedding for negsharp")
             
             blur_loss = triplet_loss(anchor_blur_embed, positive_sharp_embed, negative_sharp_embed)
-            eprint("Got tripletloss")
+            # eprint("Got tripletloss")
 
             loss = (blur_loss + sharp_loss)
             
@@ -114,13 +117,13 @@ if __name__ == "__main__":
 
             lossval = loss.item()
             losses.append(lossval)
-            # print("Lossval is: ", lossval, end=", ")
-            print("Lossval is: ", lossval)
+            print(lossval, end=", ", flush=True)
+            # print("Lossval is: ", lossval)
 
             optimizer.step()
 
         eprint(f"Average loss is {statistics.mean(losses)}")
 
-    torch.save(blurnet, "blurnet.pt")
-    torch.save(sharpnet, "sharpnet.pt")
+        torch.save(blurnet, f"blurnet-{datetime.now().day}-{datetime.now().hour}-{epoch}.pt")
+        torch.save(sharpnet, f"sharpnet-{datetime.now().day}-{datetime.now().hour}-{epoch}.pt")
 

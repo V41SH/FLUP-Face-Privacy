@@ -54,7 +54,6 @@ detector = RetinaFace(gpu_id=None)
 
 #     return result_img
 def detect_face(image):
-    detector = RetinaFace(gpu_id=0)
     
     # Convert PIL image to cv2 format (RGB to BGR)
     img_np = np.array(image)
