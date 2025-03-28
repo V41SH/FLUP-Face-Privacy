@@ -25,7 +25,7 @@ from utils.blurring_utils import *
 
 
 class CelebADataset(Dataset):
-    def __init__(self, transform=None, dims=128, faceFactor=0.5, triplet=False, blur_sigma=None, train=True, train_ratio=0.8, 
+    def __init__(self, root_dir="../celebA/Img/img_celeba/", transform=None, dims=128, faceFactor=0.5, triplet=False, blur_sigma=None, train=True, train_ratio=0.8, 
                  seed=42, blur_fn=None, anchor_blur=False, same_person=False, blur_both=False):
         self.faceFactor = faceFactor
         self.blur_sigma = blur_sigma
@@ -38,7 +38,7 @@ class CelebADataset(Dataset):
         self.same_person = same_person
         self.blur_both = blur_both
 
-        self.img_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../celebA/Img/img_celeba/"))
+        self.img_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), root_dir))
         self.image_filenames = [f for f in os.listdir(self.img_dir) if f.endswith(('.jpg', '.png'))]
 
         with open(os.path.join(self.img_dir, "../../Anno/identity_CelebA.txt"), "r") as file:
