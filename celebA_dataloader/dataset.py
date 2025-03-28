@@ -1,28 +1,32 @@
-import os, sys
-from pathlib import Path
-import torch
-from torch.utils.data import Dataset, DataLoader
-from PIL import Image
-import torchvision.transforms as transforms
-import numpy as np
-import cv2
-import re
-from cropper import *
+import os
+import sys
 import random
-import torch.nn.functional as F
+import re
+from pathlib import Path
+
 import matplotlib.pyplot as plt
+import numpy as np
+import torch
+import torch.nn.functional as F
+from torchvision.transforms import ToPILImage
+from PIL import Image
+from torch.utils.data import Dataset, DataLoader
+import torchvision.transforms as transforms
 import torchvision.utils as vutils
 from tqdm import tqdm
 
+# Set up project path
 current_file = Path(__file__).resolve()
 project_root = current_file.parent.parent
 sys.path.append(str(project_root))
 
-from utils.blurring_utils import blur_face
+from cropper import *
+from utils.blurring_utils import *
 
 
 class CelebADataset(Dataset):
-    def __init__(self, transform=None, dims=128, faceFactor=0.7, triplet=False, blur_sigma=None, train=True, train_ratio=0.8, seed=42, blur_fn=None, anchor_blur=True, same_person=False, blur_both=False):
+    def __init__(self, transform=None, dims=128, faceFactor=0.5, triplet=False, blur_sigma=None, train=True, train_ratio=0.8, 
+                 seed=42, blur_fn=None, anchor_blur=False, same_person=False, blur_both=False):
         self.faceFactor = faceFactor
         self.blur_sigma = blur_sigma
         self.dims = dims
@@ -69,10 +73,17 @@ class CelebADataset(Dataset):
         return len(self.image_filenames)
     
 
+
     def apply_gaussian_blur(self, image):
-        if self.blur_sigma is not None and self.blur_sigma>0:
-            return blur_face(image, self.blur_sigma, blur_fn=self.blur_fn)
+        if isinstance(image, torch.Tensor):
+            image = Image.fromarray(np.array(image)[:, :, ::-1], "RGB")
+
+        if (self.blur_sigma is not None and self.blur_sigma > 0) or self.blur_fn is not None:
+            res = blur_face(image, self.blur_sigma, blur_fn=self.blur_fn) 
+            return res 
+
         return image
+
     
     def getFace(self, blurImg, filename): 
 
@@ -90,13 +101,93 @@ class CelebADataset(Dataset):
         w = int(w * scale) 
         h = int(h * scale) 
 
+        d = min(blurImg.height, blurImg.width)
+
         blurImg = align_crop_opencv(np.array(blurImg)[:, :, ::-1],  # Convert tensor to OpenCV format
                                         self.landmark_anno[int(filename[:-4])-1] * scale,  # Get source landmarks
                                         self.std_landmark_anno,
-                                        crop_size=[blurImg.height, blurImg.width],
+                                        crop_size=[d,d],
                                         face_factor=self.faceFactor)
         
         return Image.fromarray(blurImg[:, :, ::-1], "RGB")
+
+    
+    def blur_and_transform(self, anchor, positive=None): 
+
+        #anchor_blur T F F T N
+        #blur_both   T F T F N
+        #num blured  2 1 2 1 0
+        #which image   p   a
+
+        if self.anchor_blur is None and self.blur_both is None: 
+            if positive: 
+                if self.transform: 
+                    return self.transform(anchor), self.transform(positive)
+                else: 
+                    return anchor, positive
+            else: 
+                if self.transform: 
+                    return self.transform(anchor)
+                else: 
+                    return anchor
+
+        if self.anchor_blur and self.blur_both:
+            anchor = self.apply_gaussian_blur(anchor)
+            if positive: 
+                positive = self.apply_gaussian_blur(positive)
+                if self.transform: 
+                    return self.transform(anchor), self.transform(positive)
+                else: 
+                    return anchor, positive
+            else: 
+                if self.transform: 
+                    return self.transform(anchor)
+                else: 
+                    return anchor
+        elif not self.anchor_blur and not self.blur_both:
+            if positive: 
+                positive = self.apply_gaussian_blur(positive)
+                if self.transform:
+                    return self.transform(anchor), self.transform(positive)
+                else:
+                    return anchor, positive
+            else:
+                if self.transform:
+                    return self.transform(anchor)
+                else:
+                    return anchor 
+        elif not self.anchor_blur and self.blur_both:
+            print("invlid combination of anchor_blur and blur_both, bluring nothing")
+            anchor = self.apply_gaussian_blur(anchor)
+            if positive: 
+                positive = self.apply_gaussian_blur(positive)
+            
+                if self.transform: 
+                    return self.transform(anchor), self.transform(positive)
+                else: 
+                    return anchor, positive
+            else: 
+                if self.transform: 
+                    return self.transform(anchor)
+                else: 
+                    return anchor
+
+        elif self.anchor_blur and not self.blur_both:
+            anchor = self.apply_gaussian_blur(anchor)
+            if positive: 
+                if self.transform: 
+                    return self.transform(anchor), self.transform(positive)
+                else: 
+                    return anchor, positive
+            else: 
+                if self.transform: 
+                    return self.transform(anchor)
+                else: 
+                    return anchor
+        else: 
+            print("this is undocumented behvaiour uwu, I will self distruct")
+            return None
+
 
 
     def __getitem__(self, idx):
@@ -105,18 +196,14 @@ class CelebADataset(Dataset):
         identity = self.identity[filename]
 
         anchor = Image.open(img_path).convert("RGB")
+
+
         positive = anchor.copy()
 
         # center the eyes and the face in the middle of the image
         anchor = self.getFace(anchor, filename)
-        # crop the image to the bounding box of the face + add blurring
-        # if self.anchor_blur:
-        #     anchor = self.apply_gaussian_blur(anchor)
-
-        if self.transform:
-            anchor = self.transform(anchor)
     
-        if self.triplet: 
+        if self.triplet or self.blur_both: 
             if self.same_person:
                 same_id_images = [i for i, id_val in self.identity.items() if id_val == identity and i != filename]
             else: 
@@ -124,12 +211,7 @@ class CelebADataset(Dataset):
 
 
             if not same_id_images:
-                if self.anchor_blur or self.blur_both: 
-                    anchor = self.apply_gaussian_blur(anchor)
-                if not self.anchor_blur or self.blur_both: 
-                    positive = self.apply_gaussian_blur(positive)
-
-                return positive, anchor, identity 
+                return *self.blur_and_transform(anchor, positive=positive), identity 
 
             else:
                 random_filename = random.choice(same_id_images)
@@ -137,29 +219,21 @@ class CelebADataset(Dataset):
 
                 random_positive = self.getFace(Image.open(img_path).convert("RGB"), random_filename)
 
-                if self.transform: 
-                    random_positive = self.transform(random_positive)
-
-                if self.anchor_blur or self.blur_both: 
-                    anchor = self.apply_gaussian_blur(anchor)
-                if not self.anchor_blur or self.blur_both: 
-                    random_positive = self.apply_gaussian_blur(random_positive)
-
-                return random_positive, anchor, identity 
+                return *self.blur_and_transform(anchor, positive=random_positive), identity 
 
         else: 
-            if self.anchor_blur or self.blur_both: 
-                anchor = self.apply_gaussian_blur(anchor)
-            
-            return anchor, identity 
+            return self.blur_and_transform(anchor), identity 
 
 
 class CelebATriplet():
-    def __init__(self, transforms=None, train=True, train_ratio=0.8, batch_size=32, img_size=224, seed=42, blur_sigma=None, blur_fn=None):
+    def __init__(self, transforms=None, train=True, train_ratio=0.8, batch_size=32, img_size=224, seed=42, blur_sigma=None, blur_fn=None, anchor_blur=False, same_person=False, blur_both=False):
         self.data_dual = CelebADataset(transform=transforms, triplet=True, blur_sigma=blur_sigma,
-                                       train=train, train_ratio=train_ratio, seed=seed, blur_fn=blur_fn)
+                                       train=train, train_ratio=train_ratio, seed=seed, blur_fn=blur_fn,
+                                       anchor_blur=anchor_blur, same_person=same_person, blur_both=blur_both)
+
         self.data_single = CelebADataset(transform=transforms, triplet=False, blur_sigma=blur_sigma,
-                                         train=train, train_ratio=train_ratio, seed=seed, blur_fn=blur_fn)
+                                         train=train, train_ratio=train_ratio, seed=seed, blur_fn=blur_fn,
+                                         anchor_blur=not anchor_blur, same_person=same_person, blur_both=blur_both)
 
         self.batch_size = batch_size
         self.rng = random.Random(seed)
@@ -183,13 +257,14 @@ class CelebATriplet():
                 while True:
                     idx2 = self.rng.randint(0, len(self.data_single) - 1)
                     img2, label2 = self.data_single[idx2]
+                    # print(label1, label2)
                     if label2 != label1:
                         break
 
-                img1_batch.append(img1)
-                img1_blur_batch.append(img1_blur)
-                img2_batch.append(img2)
-                label_batch.append(label1)
+                img1_batch.append(torch.tensor(np.array(img1)))
+                img1_blur_batch.append(torch.tensor(np.array(img1_blur)))
+                img2_batch.append(torch.tensor(np.array(img2)))
+                label_batch.append(torch.tensor(np.array(label1)))
 
             # Stack to form batches: [B, C, H, W] for images, [B] for labels
             yield (
@@ -201,7 +276,7 @@ class CelebATriplet():
 
 
 
-def getCelebADataLoader(batch_size=32, img_size=224, seed=42, blur_sigma=None, blur_fn=None):
+def getCelebADataLoader(batch_size=32, img_size=224, seed=42, blur_sigma=None, blur_fn=None, anchor_blur=False, same_person=False, blur_both=False):
 
     train_transform = transforms.Compose([
         transforms.Resize((img_size, img_size)),
@@ -218,8 +293,10 @@ def getCelebADataLoader(batch_size=32, img_size=224, seed=42, blur_sigma=None, b
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-    train = CelebATriplet(transforms=train_transform, train=True, batch_size=batch_size, img_size=img_size, seed=seed, blur_sigma=blur_sigma, blur_fn=blur_fn)
-    test = CelebATriplet(transforms=test_transform, train=False, batch_size=batch_size, img_size=img_size, seed=seed, blur_sigma=blur_sigma, blur_fn=blur_fn)
+    train = CelebATriplet(transforms=train_transform, train=True, batch_size=batch_size, img_size=img_size, seed=seed, blur_sigma=blur_sigma, blur_fn=blur_fn,
+                          anchor_blur=anchor_blur, same_person=same_person, blur_both=blur_both)
+    test = CelebATriplet(transforms=test_transform, train=False, batch_size=batch_size, img_size=img_size, seed=seed, blur_sigma=blur_sigma, blur_fn=blur_fn,
+                          anchor_blur=anchor_blur, same_person=same_person, blur_both=blur_both)
 
     return train, test
 
@@ -238,23 +315,25 @@ def visualize_batch(sample_batch, save_name="image.png"):
     mean = torch.tensor([0.485, 0.456, 0.406]).reshape(1, 3, 1, 1)
     std = torch.tensor([0.229, 0.224, 0.225]).reshape(1, 3, 1, 1)
 
-    if len(sample_batch) == 3:
+    if len(sample_batch) == 2: 
+        img1, label = sample_batch
+        img1 = to_tensor(img1)
+        img1 = img1 * std + mean
+
+        row = img1 
+    elif len(sample_batch) == 3:
         img1, img1_blur, label = sample_batch
 
-        # Convert all to tensors (if they aren’t already)
         img1 = to_tensor(img1)
         img1_blur = to_tensor(img1_blur)
 
         img1 = img1 * std + mean
         img1_blur = img1_blur * std + mean
-        # img2 = to_tensor(img2)
 
-        # Stack horizontally to make a row: [img1 | img1_blur | img2]
         row = torch.cat([img1, img1_blur], dim=2)  # concat along width
-    if len(sample_batch) == 4:
+    elif len(sample_batch) == 4:
         img1, img1_blur, img2, label = sample_batch
 
-        # Convert all to tensors (if they aren’t already)
         img1 = to_tensor(img1)
         img1_blur = to_tensor(img1_blur)
         img2 = to_tensor(img2)
@@ -263,8 +342,12 @@ def visualize_batch(sample_batch, save_name="image.png"):
         img1_blur = img1_blur * std + mean
         img2 = img2 * std + mean
 
-        # Stack horizontally to make a row: [img1 | img1_blur | img2]
+        print(img1.shape, img1_blur.shape, img2.shape, label)
+
         row = torch.cat([img1, img1_blur, img2], dim=2)  # concat along width
+    else:
+        label = "single image"
+        row = to_tensor(sample_batch[0])
 
     # Optionally convert to grid shape: [1, 3, H, 3*W]
     grid = vutils.make_grid(row, normalize=True, scale_each=True)
@@ -285,12 +368,12 @@ def visualize_batch(sample_batch, save_name="image.png"):
 
 
 if __name__ == "__main__": 
+    img_size = 200
+    seed = 5358
+    blur_sigma = 7
 
-    # face_transform = transforms.Compose([
-    #     transforms.GaussianBlur(kernel_size=15, sigma=(10, 20)),  # Apply Gaussian blur with random sigma
-    # ])
-    train_transform = transforms.Compose([
-        transforms.Resize((200, 200)),
+    transform = transforms.Compose([
+        transforms.Resize((img_size, img_size)),
         transforms.RandomHorizontalFlip(),
         transforms.RandomRotation(10),
         transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),
@@ -298,38 +381,90 @@ if __name__ == "__main__":
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-    # dataset = CelebADataset(triplet=True, transform=train_transform, seed=123, blur_sigma=7)
-    dataset = CelebADataset(triplet=True, transform=train_transform, seed=123, blur_sigma=7, same_person=True, blur_both=True)
+    # Triplet: anchor, blurred positive, and blurred negative
+    train_loader, _ = getCelebADataLoader(
+        batch_size=1,
+        img_size=img_size,
+        seed=seed,
+        blur_sigma=blur_sigma,
+        blur_fn=None
+    )
+    sample_batch = next(iter(train_loader))
+    visualize_batch(sample_batch, save_name="3_1.png")
 
-    visualize_batch(dataset[0])
-    
+    # Triplet: blurred anchor, positive, and negative
+    train_loader, _ = getCelebADataLoader(
+        batch_size=1,
+        img_size=img_size,
+        seed=seed,
+        blur_sigma=blur_sigma,
+        blur_fn=None
+    )
+    # Manually set anchor_blur=True on the internal dataset
+    train_loader.data_dual.anchor_blur = True
+    sample_batch = next(iter(train_loader))
+    visualize_batch(sample_batch, save_name="3_2.png")
 
-    # # Initialize dataset
-    # dataset = CelebADataset(transform=train_transform)
-    # # Create DataLoader
-    # dataloader = DataLoader(dataset, batch_size=4, shuffle=True, num_workers=1)
-    # data_iter = iter(dataloader)
-    # sample_batch = next(data_iter)
-    # visualize_batch(sample_batch)
+    # Dual: same person, both are blurred
+    dual_dataset = CelebADataset(
+        triplet=True,
+        transform=transform,
+        seed=seed,
+        blur_sigma=blur_sigma,
+        same_person=True,
+        blur_both=True
+    )
+    visualize_batch(dual_dataset[0], save_name="2_1.png")
 
+    # Dual: same person, neither are blurred
+    dual_dataset = CelebADataset(
+        triplet=True,
+        transform=transform,
+        seed=seed,
+        blur_sigma=blur_sigma,
+        same_person=True,
+        blur_both=None,
+        anchor_blur=None
+    )
+    visualize_batch(dual_dataset[0], save_name="2_2.png")
 
+    # Single: one blurred face
+    single_dataset = CelebADataset(
+        triplet=False,
+        transform=transform,
+        seed=seed,
+        blur_sigma=blur_sigma,
+        anchor_blur=True
+    )
+    visualize_batch(single_dataset[0], save_name="1_1.png")
 
-    # train, test = getCelebADataLoader(batch_size=1, blur_sigma=7, seed=123, blur_fn=None)
-    # train = CelebASameLabelPairs(transforms=train_transform, batch_size=4, samePerson=True)
-    # data_iter = iter(train)
-    # sample_batch = next(data_iter)
-    # visualize_batch(sample_batch)
+    # Single: one normal face
+    single_dataset = CelebADataset(
+        triplet=False,
+        transform=transform,
+        seed=seed,
+        blur_sigma=0
+    )
+    visualize_batch(single_dataset[0], save_name="1_2.png")
 
-    # # Check batch
+    # Single: one pixelated face
+    single_dataset = CelebADataset(
+        triplet=False,
+        transform=transform,
+        seed=seed,
+        # blur_sigma=0,
+        blur_fn=pixelation_blur_fn, 
+        anchor_blur=True
+    )
+    visualize_batch(single_dataset[0], save_name="1_3.png")
 
-
-    # dataset = CelebADual(faceTransform=face_transform, dims=128, faceFactor=0.7, crop='neural')
-
-    # for batch_tensor in dataset:
-    # for (image_sharp, label_sharp), (image_blur, label_blur) in dataset:
-    #     print(label_blur, label_sharp)
-    #     batch_tensor = torch.cat([image_sharp, image_blur])
-    #     visualize_batch(batch_tensor)
-    #     break
-
-    # print("Batch shape:", np.array(sample_batch).size)  # Should be [64, 3, 128, 128]
+    # Single: one blacked out face
+    single_dataset = CelebADataset(
+        triplet=False,
+        transform=transform,
+        seed=seed,
+        # blur_sigma=0,
+        blur_fn=black_blur_fn,
+        anchor_blur=True
+    )
+    visualize_batch(single_dataset[0], save_name="1_4.png")
