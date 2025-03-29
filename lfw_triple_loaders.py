@@ -20,7 +20,7 @@ class LFWDatasetTriple(Dataset):
     """
 
     def __init__(self, root_dir, csv_file=None, transform=None, train=True, train_ratio=0.8, seed=42
-                 , blur_sigma=3):
+                 , blur_sigma=3, randomize_blur=False):
         """
         Args:
             root_dir (string): Directory with all the images.
@@ -33,9 +33,8 @@ class LFWDatasetTriple(Dataset):
         """
         self.root_dir = root_dir
         self.transform = transform
-        #self.anchor_blur = anchor_blur
         self.blur_sigma = blur_sigma
-
+        self.randomize_blur = randomize_blur
         # Set up paths
         self.people_dir = os.path.join(root_dir, 'lfw-deepfunneled', 'lfw-deepfunneled')
 
@@ -87,8 +86,24 @@ class LFWDatasetTriple(Dataset):
         self.class_names = {v: k for k, v in label_map.items()}
 
     def apply_gaussian_blur(self, image):
-        if self.blur_sigma is not None and self.blur_sigma>0:
-            return blur_face(image, self.blur_sigma)
+
+        if self.randomize_blur:
+            # then self.blur_sigma is list of two values?
+            if type(self.blur_sigma) == list:
+                minsig, maxsig = self.blur_sigma[0], self.blur_sigma[1]
+            
+            else:
+                minsig, maxsig = 5 , 20
+                # default values
+
+            sigma = random.randint(minsig, maxsig)
+            print(sigma)
+            return blur_face(image, sigma)
+
+        else:
+            if self.blur_sigma is not None and self.blur_sigma>0:
+                return blur_face(image, self.blur_sigma)
+
         return image
 
     def __len__(self):
@@ -116,10 +131,10 @@ class LFWDatasetTriple(Dataset):
         positive_2_sharp = Image.open(positive_path_2)
 
         # uncomment to test
-        # anchor_1_sharp.show()
-        # anchor_2_blur.show()
-        # positive_1_blur.show()
-        # positive_2_sharp.show()
+        anchor_1_sharp.show()
+        anchor_2_blur.show()
+        positive_1_blur.show()
+        positive_2_sharp.show()
 
         if self.transform:
             anchor_1_sharp = self.transform(anchor_1_sharp)
@@ -155,7 +170,7 @@ def get_transforms(img_size):
     return train_transform, test_transform
 
 def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42,
-                        anchor_blur = False, blur_sigma=None):
+                        anchor_blur = False, blur_sigma=None, randomize_blur=False):
     """
     Create train and test dataloaders for the LFW dataset
 
@@ -174,9 +189,9 @@ def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42,
     train_transform, test_transform = get_transforms(img_size=img_size)
     # Create datasets
     train_dataset = LFWDatasetTriple(root_dir=root_dir, transform=train_transform, train=True, seed=seed,
-                                    blur_sigma=blur_sigma)
+                                    blur_sigma=blur_sigma, randomize_blur=randomize_blur)
     test_dataset = LFWDatasetTriple(root_dir=root_dir, transform=test_transform, train=False, seed=seed,
-                                    blur_sigma=blur_sigma)
+                                    blur_sigma=blur_sigma, randomize_blur=randomize_blur)
 
     # Create dataloaders
     #NUM_WORKERS=4
@@ -195,12 +210,14 @@ if __name__ == "__main__":
     train_loader, test_loader, num_classes = get_lfw_dataloaders(
         root_dir,
         batch_size=1,
-        #anchor_blur=False,
-        blur_sigma=3
+        # blur_sigma=3,
+        blur_sigma=[5,20],
+        randomize_blur=True
     )
 
     print(f"Dataset loaded successfully with {num_classes} unique individuals")
     print(f"Training batches: {len(train_loader)}, Test batches: {len(test_loader)}")
 
 
-    im_1, im_2, im_3, im_4, _, _, _ = train_loader.dataset[0]
+    # im_1, im_2, im_3, im_4, _, _, _ = train_loader.dataset[0]
+    im_1, im_2, im_3, im_4 = train_loader.dataset[0]
