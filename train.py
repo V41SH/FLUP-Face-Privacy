@@ -18,16 +18,21 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 
 if __name__ == "__main__":
 
-    train_loader, test_loader, _ = get_lfw_dataloaders("./data/lfw", batch_size=10, blur_sigma=3)
+    # Model 2
+    train_loader, test_loader, _ = get_lfw_dataloaders("./data/lfw", batch_size=10, blur_sigma=[5,20], randomize_blur=True)
+    # Model 3
+    # train_loader, test_loader, _ = get_lfw_dataloaders("./data/lfw", batch_size=10, blur_sigma=10, randomize_blur=False,
+                                                    #    randomize_crop=True)
+    # Model 4
+    # train_loader, test_loader, _ = get_lfw_dataloaders("./data/lfw", batch_size=10, blur_sigma=[5,20], randomize_blur=True,
+    #                                                    randomize_crop=True)
 
     eprint("Datasets were loaded")
     
     lr = 2e-4
-    epochs = 20
+    epochs = 50
     epslon = 1e-6
 
-    # loss_criterion = nn.BCELoss()
-    # similarity_criterion = nn.CosineEmbeddingLoss()
     triplet_loss = nn.TripletMarginLoss().to(device)
 
     blurnet = SlayNet(inputsize=224, embedding_size=512).to(device)
@@ -86,6 +91,10 @@ if __name__ == "__main__":
 
         eprint(f"Average loss is {statistics.mean(losses)}")
 
-        torch.save(blurnet, f"blurnet-{datetime.now().day}-{datetime.now().hour}-{epoch}.pt")
-        torch.save(sharpnet, f"sharpnet-{datetime.now().day}-{datetime.now().hour}-{epoch}.pt")
+        if (epoch % 10) == 0:
+            torch.save(blurnet, f"blurnet-{datetime.now().day}-{datetime.now().hour}-{epoch}.pt")
+            torch.save(sharpnet, f"sharpnet-{datetime.now().day}-{datetime.now().hour}-{epoch}.pt")
 
+    # After all epochs
+    torch.save(blurnet, f"blurnet-{datetime.now().day}-{datetime.now().hour}-{epoch}.pt")
+    torch.save(sharpnet, f"sharpnet-{datetime.now().day}-{datetime.now().hour}-{epoch}.pt")
