@@ -2,7 +2,7 @@ import torch
 import cv2
 from PIL import Image, ImageFilter
 import numpy as np
-
+import sys
 from batch_face import RetinaFace
 detector = RetinaFace(gpu_id=-1)
 
@@ -13,7 +13,9 @@ def detect_face(image):
     
     # Face detection
     faces = detector(img_cv, threshold=0.95, resize=1, max_size=1080, return_dict=True)
-    return faces
+    return [face['box'] for face in faces]
+
+def blur_face(image, blur_sigma, blur_fn=None, faces=None):
 
 def blur_face(image, blur_type='gaussian', blur_amount=3, **kwargs):
     
@@ -24,13 +26,18 @@ def blur_face(image, blur_type='gaussian', blur_amount=3, **kwargs):
     
     result_img = image.copy()
     
+    # x1 = 0
+    # y1 = sys.maxsize
+    # x2 = 0
+    # y2 = sys.maxsize
+
     for face in faces:
-        x1, y1, x2, y2 = face['box']
-        x1, y1 = max(0, int(x1)), max(0, int(y1))
-        x2, y2 = min(image.width, int(x2)), min(image.height, int(y2))
+        fx1, fy1, fx2, fy2 = face
+        fx1, fy1 = max(0, int(fx1)), max(0, int(fy1))
+        fx2, fy2 = min(image.width, int(fx2)), min(image.height, int(fy2))
         
-        if x2 > x1 and y2 > y1:
-            face_region = result_img.crop((x1, y1, x2, y2))
+        if fx2 > fx1 and fy2 > fy1:
+            face_region = result_img.crop((fx1, fy1, fx2, fy2))
             
             if blur_type == 'gaussian':
                 blurred_face = face_region.filter(ImageFilter.GaussianBlur(blur_amount))
@@ -42,8 +49,9 @@ def blur_face(image, blur_type='gaussian', blur_amount=3, **kwargs):
             else:
                 raise ValueError(f"Unknown blur type: {blur_type}")
             
-            result_img.paste(blurred_face, (x1, y1))
+            result_img.paste(blurred_face, (fx1, fy1))
     
+  
     return result_img
 
 def pixelate_face(image_region, pixel_size=10):
