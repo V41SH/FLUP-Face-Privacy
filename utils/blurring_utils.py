@@ -15,10 +15,9 @@ def detect_face(image):
     faces = detector(img_cv, threshold=0.95, resize=1, max_size=1080, return_dict=True)
     return [face['box'] for face in faces]
 
-def blur_face(image, blur_sigma, blur_fn=None, faces=None):
+# def blur_face(image, blur_sigma, blur_fn=None, faces=None):
 
 def blur_face(image, blur_type='gaussian', blur_amount=3, **kwargs):
-    
     faces = detect_face(image)
     
     if not faces:
