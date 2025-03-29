@@ -1,0 +1,9 @@
+Final Results (black blur):
+Blur 0:
+  Same Person:      Mean similarity = 0.6705 (n=49)
+  Different Person: Mean 1-similarity = 0.9962 (n=50)
+  All Pairs:        Mean metric = 0.8350 (n=99)
+Blur 1:
+  Same Person:      Mean similarity = -0.0096 (n=3)
+  Different Person: Mean 1-similarity = 1.0024 (n=3)
+  All Pairs:        Mean metric = 0.4964 (n=6)

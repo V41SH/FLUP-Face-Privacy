@@ -18,7 +18,7 @@ class LFWDatasetDouble(Dataset):
     """
 
     def __init__(self, root_dir, csv_file=None, transform=None, train=True, train_ratio=0.8, seed=42,
-                 same_person = False, blur_sigma=None):
+                 same_person=False, blur_sigma=None, blur_type='gaussian', pixelation_size=10):
         """
         Args:
             root_dir (string): Directory with all the images.
@@ -29,16 +29,20 @@ class LFWDatasetDouble(Dataset):
             seed (int): Random seed for reproducibility
             same_person (bool): Whether to return two images of same person
             blur_sigma (float): Blurring sigma parameter
+            blur_type (str): Type of blurring to use ('gaussian', 'black', 'pixelation')
+            pixelation_size (int): Size of pixels for pixelation blur
         """
         self.root_dir = root_dir
         self.transform = transform
         self.same_person = same_person
         self.blur_sigma = blur_sigma
+        self.blur_type = blur_type
+        self.pixelation_size = pixelation_size
 
         # Set up paths
         self.people_dir = os.path.join(root_dir, 'lfw-deepfunneled', 'lfw-deepfunneled')
 
-        # Get all image paths and labels
+        # Rest of the initialization code remains the same
         self.all_people = os.listdir(self.people_dir)
         self.image_paths = []  # only bros with more than one pic
         self.labels = []
@@ -83,19 +87,16 @@ class LFWDatasetDouble(Dataset):
         # Store number of classes
         self.num_classes = len(label_map)
         self.class_names = {v: k for k, v in label_map.items()}
-
-    def apply_gaussian_blur(self, image):
+        
+    def apply_obfuscation(self, image, blur_type='gaussian', blur_fn=None):
         if self.blur_sigma is not None and self.blur_sigma > 0:
-            return blur_face(image, self.blur_sigma)
+            return blur_face(image, blur_type=blur_type, blur_amount=self.blur_sigma, blur_fn=blur_fn)
         return image
 
     def __len__(self):
         return len(self.indices)
 
     def __getitem__(self, idx):
-
-        # print("STARTED TO TRY TO MAYBE SOMETIMES BY CHANCE GET ITEM")
-
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
@@ -104,16 +105,19 @@ class LFWDatasetDouble(Dataset):
         name = self.names[real_idx]
 
         img_1_path = self.image_paths[real_idx]
-        # print(img_1_path)
 
         if self.same_person:
             img_2_path = get_same_person(img_1_path)
         else:
             img_2_path = get_diff_person(img_1_path, self.people_dir, self.all_people)
 
+        # Load and apply obfuscation
+        image_1 = Image.open(img_1_path).convert('RGB')
+        image_2 = Image.open(img_2_path).convert('RGB')
+
         if self.blur_sigma is not None and self.blur_sigma > 0:
-            image_1 = self.apply_gaussian_blur(Image.open(img_1_path).convert('RGB'))
-            image_2 = self.apply_gaussian_blur(Image.open(img_2_path).convert('RGB'))
+            image_1 = self.apply_obfuscation(Image.open(img_1_path).convert('RGB'), blur_type='gaussian')
+            image_2 = self.apply_obfuscation(Image.open(img_2_path).convert('RGB'), blur_type='gaussian')
         else:
             image_1 = Image.open(img_1_path).convert('RGB')
             image_2 = Image.open(img_2_path).convert('RGB')
@@ -121,22 +125,17 @@ class LFWDatasetDouble(Dataset):
         name1 = os.path.basename(os.path.dirname(img_1_path))
         name2 = os.path.basename(os.path.dirname(img_2_path))
 
-        # uncomment to test
-        # image_1.show()
-        # image_2.show()
-
+        # Apply transformations if specified
         if self.transform:
             image_1 = self.transform(image_1)
             image_2 = self.transform(image_2)
 
-        # print("BY SOME MIRACLE FINALIZED GETTING THE PROMISED SHIT")
         return image_1, image_2, name1, name2
 
     def get_class_name(self, label):
         """Return the name of the person for a given label"""
         return self.class_names.get(label, "Unknown")
-
-
+    
 def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42,
                         same_person=False, blur_sigma=None):
     """

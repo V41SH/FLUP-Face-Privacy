@@ -1,0 +1,25 @@
+Final Results (pixelation blur):
+Blur 0:
+  Same Person:      Mean similarity = 0.6561 (n=49)
+  Different Person: Mean 1-similarity = 0.9925 (n=50)
+  All Pairs:        Mean metric = 0.8260 (n=99)
+Blur 1:
+  Same Person:      Mean similarity = 0.6561 (n=49)
+  Different Person: Mean 1-similarity = 0.9925 (n=50)
+  All Pairs:        Mean metric = 0.8260 (n=99)
+Blur 3:
+  Same Person:      Mean similarity = 0.6073 (n=50)
+  Different Person: Mean 1-similarity = 0.9980 (n=50)
+  All Pairs:        Mean metric = 0.8026 (n=100)
+Blur 5:
+  Same Person:      Mean similarity = 0.2783 (n=12)
+  Different Person: Mean 1-similarity = 1.0045 (n=8)
+  All Pairs:        Mean metric = 0.5688 (n=20)
+Blur 7:
+  Same Person:      Mean similarity = 0.0854 (n=4)
+  Different Person: Mean 1-similarity = 1.0226 (n=2)
+  All Pairs:        Mean metric = 0.3978 (n=6)
+Blur 10:
+  Same Person:      Mean similarity = 0.0182 (n=3)
+  Different Person: Mean 1-similarity = 1.0193 (n=2)
+  All Pairs:        Mean metric = 0.4186 (n=5)
