@@ -10,10 +10,15 @@ from tqdm import tqdm
 # InsightFace imports
 import insightface
 from insightface.app import FaceAnalysis
-from utils.blurring_utils import blur_face
 
 # Import the dataloader
-from lfw_double_loader import LFWDatasetDouble, get_lfw_dataloaders
+from lfw_double_loader import LFWDatasetDouble
+from lfw_double_loader import get_lfw_dataloaders as get_double
+from lfw_triple_loaders import get_transforms
+from utils.blurring_utils import blur_face
+
+
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 """
 Example Usage:
@@ -22,32 +27,33 @@ python arcface_finfin.py --root_dir data/lfw --num_pairs 100 --report_interval 2
 
 class FaceVerifier:
     def __init__(self, det_size=(640, 640)):
-        self.app = FaceAnalysis(providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
-        self.app.prepare(ctx_id=0, det_size=det_size)
-        print("InsightFace initialized successfully.")
+        # self.app = FaceAnalysis(providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+        # self.app.prepare(ctx_id=0, det_size=det_size)
+        # print("InsightFace initialized successfully.")
     
-    def get_face_embedding(self, img):
+        self.sharpnet = torch.load("./sharpnet-29-9-19.pt", weights_only=False).to(device)
+        self.blurnet = torch.load("./blurnet-29-9-19.pt", weights_only=False).to(device)
+
+        self.sharpnet.eval()
+        self.blurnet.eval()
+
+        self.train_transform, self.test_transform = get_transforms(img_size=224) 
+
+        print("Loaded custom models")
+    
+    def get_face_embedding(self, img, model_type = 'sharp'):
         """Extract face embedding from an image"""
-        # Convert to correct format(opencv style)
-        #print("wij zijn embedded facje")
-        if isinstance(img, Image.Image):
-            img = np.array(img)
-            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         
-        # Detect faces (it uses retinaface for face detection)
-        faces = self.app.get(img)
-        
-        if len(faces) == 0:
-            return None
-        
-        # Get the face with the highest detection score
-        face = max(faces, key=lambda x: x.det_score)
-        
-        # Extract embedding
-        embedding = face.embedding
-        bbox = face.bbox.astype(int)
-        
-        return embedding, bbox, face.det_score
+        with torch.no_grad():
+            img = self.test_transform(img).to(device).unsqueeze(0)
+
+            if model_type=='sharp':
+                embedding = self.sharpnet(img)
+            else:
+                embedding = self.blurnet(img)
+
+        embedding.requires_grad = False
+        return embedding
     
     def blur_face_region(self, img, bbox, sigma=3):
         """Blur a face region in an image"""
@@ -59,7 +65,6 @@ class FaceVerifier:
         
         # Extract the face region
         face_region = result[y1:y2, x1:x2]
-        print(face_region)
         
         # Apply Gaussian blur
         blurred_face = cv2.GaussianBlur(face_region, (0, 0), sigma)
@@ -71,40 +76,40 @@ class FaceVerifier:
 
     def compare_faces(self, img1, img2, blur_sigma=None):
         """Compare two face images and return similarity score"""
-        # Convert PIL images to numpy arrays if needed
+        # # Convert PIL images to numpy arrays if needed
+        # if isinstance(img1, Image.Image):
+        #     img1 = np.array(img1)
+        #     img1 = cv2.cvtColor(img1, cv2.COLOR_RGB2BGR)
+        # if isinstance(img2, Image.Image):
+        #     img2 = np.array(img2)
+        #     img2 = cv2.cvtColor(img2, cv2.COLOR_RGB2BGR)
         
-        
-        # Apply blur if specified
-        if blur_sigma is not None and blur_sigma > 0:
-            # Detect face first
-            # faces1 = self.app.get(img1)
-            # faces2 = self.app.get(img2)
+        # # Apply blur if specified
+        # if blur_sigma is not None and blur_sigma > 0:
+        #     # Detect face first
+        #     faces1 = self.app.get(img1)
+        #     faces2 = self.app.get(img2)
             
-            # if len(faces1) > 0:
-            #     face1 = max(faces1, key=lambda x: x.det_score)
-            #     img1 = self.blur_face_region(img1, face1.bbox, blur_sigma)
-            img1 = blur_face(img1, blur_sigma)
-            # if len(faces2) > 0:
-            #     face2 = max(faces2, key=lambda x: x.det_score)
-            #     img2 = self.blur_face_region(img2, face2.bbox, blur_sigma)
+        #     if len(faces1) > 0:
+        #         face1 = max(faces1, key=lambda x: x.det_score)
+        #         img1 = self.blur_face_region(img1, face1.bbox, blur_sigma)
+        #     if len(faces2) > 0:
+        #         face2 = max(faces2, key=lambda x: x.det_score)
+        #         img2 = self.blur_face_region(img2, face2.bbox, blur_sigma)
         
-        if isinstance(img1, Image.Image):
-            img1 = np.array(img1)
-            img1 = cv2.cvtColor(img1, cv2.COLOR_RGB2BGR)
-        if isinstance(img2, Image.Image):
-            img2 = np.array(img2)
-            img2 = cv2.cvtColor(img2, cv2.COLOR_RGB2BGR)
+        # only img1 is blurred bro please bro
+        if blur_sigma is not None and blur_sigma>0:
+            img1 = blur_face(img1, blur_sigma)
 
         # Get embeddings
         result1 = self.get_face_embedding(img1)
-        # print("img2")
         result2 = self.get_face_embedding(img2)
         
         if result1 is None or result2 is None:
             return None
         
-        embedding1, _, _ = result1
-        embedding2, _, _ = result2
+        embedding1 = result1
+        embedding2 = result2
         
         # Calculate similarity
         similarity = self.cosine_similarity(embedding1, embedding2)
@@ -112,7 +117,7 @@ class FaceVerifier:
         return similarity
 
     def evaluate_blur_effects(self, dataset, num_pairs=100, blur_levels=[0, 1, 3, 5, 7, 10], 
-                            report_interval=10, save_path="arcface_eval_results"):
+                            report_interval=10, save_path="blur_evaluation_results"):
         """
         Evaluate blur effects on multiple image pairs from the dataset
         
@@ -203,8 +208,13 @@ class FaceVerifier:
     
     @staticmethod
     def cosine_similarity(a, b):
+        a = a.squeeze(0)
+        b = b.squeeze(0)
         """Calculate cosine similarity between two vectors"""
-        return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+        # return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+        result = torch.dot(a, b) / (torch.linalg.norm(a) * torch.linalg.norm(b))
+        return result.cpu().numpy()
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Evaluate blur effects on face verification')
@@ -213,7 +223,7 @@ def parse_args():
     parser.add_argument('--report_interval', type=int, default=10, help='Interval at which to save intermediate results')
     parser.add_argument('--blur_levels', type=int, nargs='+', default=[0, 1, 3, 5, 7, 10], help='Blur levels to evaluate')
     parser.add_argument('--det_size', type=int, default=640, help='Detection size for InsightFace')
-    parser.add_argument('--save_path', type=str, default="arcface_eval_results", help='Directory to save results')
+    parser.add_argument('--save_path', type=str, default="blur_evaluation_results", help='Directory to save results')
     parser.add_argument('--dataset', type=str, default='lfw', choices=['lfw', 'celeba'], help='Which dataset to use: lfw or celeba')
     
     return parser.parse_args()

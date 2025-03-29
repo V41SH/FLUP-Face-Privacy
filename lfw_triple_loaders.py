@@ -134,6 +134,25 @@ class LFWDatasetTriple(Dataset):
         """Return the name of the person for a given label"""
         return self.class_names.get(label, "Unknown")
 
+def get_transforms(img_size):
+
+    # Define transformations
+    train_transform = transforms.Compose([
+        transforms.Resize((img_size, img_size)),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(10),
+        transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+
+    test_transform = transforms.Compose([
+        transforms.Resize((img_size, img_size)),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+
+    return train_transform, test_transform
 
 def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42,
                         anchor_blur = False, blur_sigma=None):
@@ -151,22 +170,8 @@ def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42,
     Returns:
         train_loader, test_loader, num_classes
     """
-    # Define transformations
-    train_transform = transforms.Compose([
-        transforms.Resize((img_size, img_size)),
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomRotation(10),
-        transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-
-    test_transform = transforms.Compose([
-        transforms.Resize((img_size, img_size)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-
+    # get transform
+    train_transform, test_transform = get_transforms(img_size=img_size)
     # Create datasets
     train_dataset = LFWDatasetTriple(root_dir=root_dir, transform=train_transform, train=True, seed=seed,
                                     blur_sigma=blur_sigma)

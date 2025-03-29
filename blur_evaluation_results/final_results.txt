@@ -1,7 +1,7 @@
 Final Results:
-Blur 0: Mean similarity = 0.6617 (n=100)
-Blur 1: Mean similarity = 0.6520 (n=100)
-Blur 3: Mean similarity = 0.5427 (n=100)
-Blur 5: Mean similarity = 0.4443 (n=100)
-Blur 7: Mean similarity = 0.3927 (n=97)
-Blur 10: Mean similarity = 0.2999 (n=18)
+Blur 0: Mean similarity = 0.6328 (n=99)
+Blur 1: Mean similarity = 0.6334 (n=99)
+Blur 3: Mean similarity = 0.5061 (n=99)
+Blur 5: Mean similarity = 0.3259 (n=99)
+Blur 7: Mean similarity = 0.1905 (n=95)
+Blur 10: Mean similarity = 0.0773 (n=42)

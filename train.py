@@ -12,6 +12,7 @@ import sys
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
+    print(*args, **kwargs)
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -79,7 +80,7 @@ if __name__ == "__main__":
 
             lossval = loss.item()
             losses.append(lossval)
-            print(lossval, end=", ", flush=True)
+            eprint(lossval, end=", ", flush=True)
 
             optimizer.step()
 

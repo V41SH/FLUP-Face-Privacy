@@ -77,6 +77,8 @@ class LFWDatasetDouble(Dataset):
             self.indices = indices[:split_idx]
         else:
             self.indices = indices[split_idx:]
+        
+        print(len(self.indices))
 
         # Store number of classes
         self.num_classes = len(label_map)
@@ -102,6 +104,7 @@ class LFWDatasetDouble(Dataset):
         name = self.names[real_idx]
 
         img_1_path = self.image_paths[real_idx]
+        # print(img_1_path)
 
         if self.same_person:
             img_2_path = get_same_person(img_1_path)
@@ -126,7 +129,7 @@ class LFWDatasetDouble(Dataset):
             image_1 = self.transform(image_1)
             image_2 = self.transform(image_2)
 
-        print("BY SOME MIRACLE FINALIZED GETTING THE PROMISED SHIT")
+        # print("BY SOME MIRACLE FINALIZED GETTING THE PROMISED SHIT")
         return image_1, image_2, name1, name2
 
     def get_class_name(self, label):
