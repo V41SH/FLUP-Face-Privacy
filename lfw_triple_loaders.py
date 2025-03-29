@@ -1,5 +1,3 @@
-from xml.sax.handler import all_properties
-
 import torch
 import os
 import random
@@ -11,8 +9,10 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 import matplotlib.pyplot as plt
 
-from utils.blurring_utils import blur_face
+from utils.blurring_utils import detect_face, blur_face
 from utils.lfw_utils import *
+from utils.env_utils import random_crop_pil as random_crop
+
 
 class LFWDatasetTriple(Dataset):
     """
@@ -20,7 +20,7 @@ class LFWDatasetTriple(Dataset):
     """
 
     def __init__(self, root_dir, csv_file=None, transform=None, train=True, train_ratio=0.8, seed=42
-                 , blur_sigma=3):
+                 , blur_sigma=3, randomize_blur=False, randomize_crop=False):
         """
         Args:
             root_dir (string): Directory with all the images.
@@ -33,9 +33,9 @@ class LFWDatasetTriple(Dataset):
         """
         self.root_dir = root_dir
         self.transform = transform
-        #self.anchor_blur = anchor_blur
         self.blur_sigma = blur_sigma
-
+        self.randomize_blur = randomize_blur
+        self.randomize_crop = randomize_crop
         # Set up paths
         self.people_dir = os.path.join(root_dir, 'lfw-deepfunneled', 'lfw-deepfunneled')
 
@@ -86,10 +86,34 @@ class LFWDatasetTriple(Dataset):
         self.num_classes = len(label_map)
         self.class_names = {v: k for k, v in label_map.items()}
 
-    def apply_gaussian_blur(self, image):
-        if self.blur_sigma is not None and self.blur_sigma>0:
-            return blur_face(image, self.blur_sigma)
+    def apply_gaussian_blur(self, image, faces=None):
+
+        if self.randomize_blur:
+            # then self.blur_sigma is list of two values?
+            if type(self.blur_sigma) == list:
+                minsig, maxsig = self.blur_sigma[0], self.blur_sigma[1]
+            
+            else:
+                # default values
+                minsig, maxsig = 5 , 20
+
+            sigma = random.randint(minsig, maxsig)
+            print(sigma)
+            return blur_face(image, sigma, faces=faces)
+
+        else:
+            if self.blur_sigma is not None and self.blur_sigma>0:
+                return blur_face(image, self.blur_sigma, faces=faces)
+
         return image
+
+    def apply_crop(self, image, faces=None):
+        
+        if self.randomize_crop:
+            image = random_crop(image, faces=faces, cropping_steps=10)
+
+        return image
+
 
     def __len__(self):
         return len(self.indices)
@@ -110,10 +134,21 @@ class LFWDatasetTriple(Dataset):
         positive_path_1 = get_same_person(anchor_path_1)
         positive_path_2 = get_same_person(anchor_path_2)
 
+        faces_anchor_path_1 = detect_face(Image.open(anchor_path_1)) 
+        faces_anchor_path_2 = detect_face(Image.open(anchor_path_2)) 
+        faces_positive_path_1 = detect_face(Image.open(positive_path_1)) 
+        faces_positive_path_2  = detect_face(Image.open(positive_path_2)) 
+        
+
         anchor_1_sharp = Image.open(anchor_path_1)
-        anchor_2_blur = self.apply_gaussian_blur(Image.open(anchor_path_2).convert('RGB'))
-        positive_1_blur = self.apply_gaussian_blur(Image.open(positive_path_1).convert('RGB'))
+        anchor_2_blur = self.apply_gaussian_blur(Image.open(anchor_path_2).convert('RGB'), faces_anchor_path_2)
+        positive_1_blur = self.apply_gaussian_blur(Image.open(positive_path_1).convert('RGB'), faces_positive_path_1)
         positive_2_sharp = Image.open(positive_path_2)
+
+        anchor_1_sharp = self.apply_crop(anchor_1_sharp, faces_anchor_path_1)
+        anchor_2_blur = self.apply_crop(anchor_2_blur, faces_anchor_path_2)
+        positive_1_blur = self.apply_crop(positive_1_blur, faces_positive_path_1)
+        positive_2_sharp = self.apply_crop(positive_2_sharp, faces_positive_path_2)
 
         # uncomment to test
         # anchor_1_sharp.show()
@@ -155,7 +190,7 @@ def get_transforms(img_size):
     return train_transform, test_transform
 
 def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42,
-                        anchor_blur = False, blur_sigma=None):
+                        anchor_blur = False, blur_sigma=None, randomize_blur=False, randomize_crop=False):
     """
     Create train and test dataloaders for the LFW dataset
 
@@ -174,9 +209,9 @@ def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42,
     train_transform, test_transform = get_transforms(img_size=img_size)
     # Create datasets
     train_dataset = LFWDatasetTriple(root_dir=root_dir, transform=train_transform, train=True, seed=seed,
-                                    blur_sigma=blur_sigma)
+                                    blur_sigma=blur_sigma, randomize_blur=randomize_blur, randomize_crop=randomize_crop)
     test_dataset = LFWDatasetTriple(root_dir=root_dir, transform=test_transform, train=False, seed=seed,
-                                    blur_sigma=blur_sigma)
+                                    blur_sigma=blur_sigma, randomize_blur=randomize_blur, randomize_crop=randomize_crop)
 
     # Create dataloaders
     #NUM_WORKERS=4
@@ -195,12 +230,15 @@ if __name__ == "__main__":
     train_loader, test_loader, num_classes = get_lfw_dataloaders(
         root_dir,
         batch_size=1,
-        #anchor_blur=False,
-        blur_sigma=3
+        # blur_sigma=3,
+        blur_sigma=[5,20],
+        randomize_blur=True,
+        randomize_crop=True
     )
 
     print(f"Dataset loaded successfully with {num_classes} unique individuals")
     print(f"Training batches: {len(train_loader)}, Test batches: {len(test_loader)}")
 
 
-    im_1, im_2, im_3, im_4, _, _, _ = train_loader.dataset[0]
+    # im_1, im_2, im_3, im_4, _, _, _ = train_loader.dataset[0]
+    im_1, im_2, im_3, im_4 = train_loader.dataset[0]

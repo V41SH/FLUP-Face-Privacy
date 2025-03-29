@@ -1,6 +1,117 @@
 import cv2
 import numpy as np
 from PIL import Image
+import random
+
+import random
+from PIL import Image
+
+def random_crop_pil(img, faces, cropping_steps):
+    """
+    Random crop using PIL without converting to OpenCV.
+    Args:
+        img (PIL.Image): Input image
+        bounding_box (tuple): Bounding box coordinates (x1, y1, x2, y2)
+        cropping_steps (int): Number of cropping steps.
+        final_size (tuple): Dimensions (width, height) to resize all images to.
+                            If None, all images are resized to the smallest cropped size.
+
+    Returns:
+        PIL.Image: Randomly cropped and resized image as PIL Image
+    """
+    if cropping_steps < 1:
+        raise ValueError("cropping_steps must be at least 1")
+
+
+    # getting union of all faces
+    
+    #get largest face 
+    bbox = max(faces, key=lambda box: abs(box[2]-box[0])*abs(box[3]-box[1]))
+
+    x1, y1, x2, y2 = bbox
+
+    width, height = img.size
+
+    # Distance to edges
+    left_dist = x1
+    right_dist = width - x2
+    top_dist = y1
+    bottom_dist = height - y2
+    min_dist = min(left_dist, right_dist, top_dist, bottom_dist)
+
+    i = random.randint(1, cropping_steps)
+
+    crop_amount = (min_dist * i) // cropping_steps
+
+    new_x1 = max(0, x1 - crop_amount)
+    new_y1 = max(0, y1 - crop_amount)
+    new_x2 = min(width, x2 + crop_amount)
+    new_y2 = min(height, y2 + crop_amount)
+
+    crop = img.crop((new_x1, new_y1, new_x2, new_y2))
+
+    return crop
+
+
+def random_crop_cv(img, bounding_box, cropping_steps, final_size=None):
+    """
+    Based on progressive crop. Pick random.
+    Args:
+        img (PIL.Image): Input image
+        bounding_box (tuple): Bounding box coordinates (x1, y1, x2, y2)
+        num_results (int): Number of progressive crops to generate
+        final_size (tuple): Dimensions (width, height) to resize all images to.
+                            If None, all images are resized to the smallest cropped size.
+
+    Returns:
+        list: List of progressively cropped and resized images as PIL Images
+    """
+    if cropping_steps < 1:
+        raise ValueError("cropping_steps must be at least 1")
+
+    x1, y1, x2, y2 = bounding_box
+    width, height = img.size
+
+    # Distance to edges
+    left_dist = x1
+    right_dist = width - x2
+    top_dist = y1
+    bottom_dist = height - y2
+    min_dist = min(left_dist, right_dist, top_dist, bottom_dist)
+
+    img_cv = np.array(img.convert("RGB"))[:, :, ::-1]  # PIL to BGR (OpenCV)
+
+    min_crop_shape = None
+
+    # for i in range(1, cropping_steps + 1):
+
+    i = random.randint(1, cropping_steps)
+
+    crop_amount = (min_dist * i) // cropping_steps
+
+    new_x1 = max(0, x1 - crop_amount)
+    new_y1 = max(0, y1 - crop_amount)
+    new_x2 = min(width, x2 + crop_amount)
+    new_y2 = min(height, y2 + crop_amount)
+
+    crop = img_cv[new_y1:new_y2, new_x1:new_x2]
+
+    if final_size is None:
+        # Keep track of the smallest shape
+        h, w = crop.shape[:2]
+        if min_crop_shape is None or (h * w < min_crop_shape[0] * min_crop_shape[1]):
+            min_crop_shape = (w, h)
+
+    # Resize all crops to the target size
+    target_size = final_size if final_size else min_crop_shape
+    # resized = [cv2.resize(crop, target_size, interpolation=cv2.INTER_LINEAR) for crop in crops]
+    resized = cv2.resize(crop, target_size, interpolation=cv2.INTER_LINEAR)
+
+    # Convert back to PIL
+    results = Image.fromarray(cv2.cvtColor(resized, cv2.COLOR_BGR2RGB))
+    return results
+
+
 
 def progressive_crop(img, bounding_box, num_results, final_size=None):
     """
