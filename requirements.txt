@@ -9,6 +9,7 @@ pandas~=2.2.3
 retina-face==0.0.17
 tf-keras==2.19.0
 pillow==11.1.0
-insightface==0.7.3
-onnx==1.17.0
-onnxruntime-gpu==1.21.0
+# insightface==0.7.3
+# onnx==1.17.0
+# onnxruntime-gpu==1.21.0
+git+https://github.com/elliottzheng/batch-face.git@master

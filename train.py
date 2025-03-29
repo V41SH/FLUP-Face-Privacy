@@ -1,37 +1,26 @@
-from model import SlayNet
-import torch.nn as nn
 import torch
+from slaymodel import SlayNet
+import torch.nn as nn
 from torch.optim.adam import Adam
 import statistics
+from datetime import datetime
 from torchvision import transforms
 
 from lfw_triple_loaders import get_lfw_dataloaders
-# from lfw_dataloader import get_lfw_dataloaders
- # # Create dataloaders
-# train_loader, test_loader, num_classes = get_lfw_dataloaders(
-#     "../lfw", batch_size=8, blur_sigma=3
-# )
-# print(f"Dataset loaded successfully with {num_classes} unique individuals")
-# print(f"Training batches: {len(train_loader)}, Test batches: {len(test_loader)}")
 
-# for the celebA dataset
-# from celebA_dataloader.dataset import CelebADual
+import sys
 
-# face_transform = transforms.Compose([
-#     transforms.GaussianBlur(kernel_size=15, sigma=(10, 20)),  # Apply Gaussian blur with random sigma
-# ])
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+    print(*args, **kwargs)
 
-
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
 if __name__ == "__main__":
 
-    # dualdataset = CelebADual(faceTransform=face_transform, dims=128, faceFactor=0.7, basicCrop=True)
+    train_loader, test_loader, _ = get_lfw_dataloaders("./data/lfw", batch_size=10, blur_sigma=3)
 
-    ba_train_loader, ba_test_loader, _ = get_lfw_dataloaders("./data/lfw", blur_sigma=3, anchor_blur=True)
-    sa_train_loader, sa_test_loader, _ = get_lfw_dataloaders("./data/lfw", blur_sigma=3, anchor_blur=False)
-
-
-    print("Datasets were loaded")
+    eprint("Datasets were loaded")
     
     lr = 2e-4
     epochs = 20
@@ -39,47 +28,49 @@ if __name__ == "__main__":
 
     # loss_criterion = nn.BCELoss()
     # similarity_criterion = nn.CosineEmbeddingLoss()
-    triplet_loss = nn.TripletMarginLoss()
+    triplet_loss = nn.TripletMarginLoss().to(device)
 
-    blurnet = SlayNet(inputsize=128, embedding_size=512)
-    sharpnet = SlayNet(inputsize=128, embedding_size=512)
+    blurnet = SlayNet(inputsize=224, embedding_size=512).to(device)
+    sharpnet = SlayNet(inputsize=224, embedding_size=512).to(device)
 
     optimizer = Adam(params=list(blurnet.parameters()) + list(sharpnet.parameters()), lr=lr)
 
 
     for epoch in range(epochs):
 
-        print(f"Epoch {epoch}")
-
+        eprint(f"Epoch {epoch}")
         losses = []
 
+        for idx, (anchor_1_sharp, anchor_2_blur, positive_1_blur, positive_2_sharp
+                ), in enumerate(train_loader):
+      
+            # anchor 1 sharp = negative 1 sharp
+            # negative 2 blur = anchor 2 blur
 
-        # for (image_sharp, label_sharp), (image_blur, label_blur) in dualdataset:
-        for idx, (
-            anchor_sharp, positive_blur, negative_blur,
-            anchor_blur, positive_sharp, negative_sharp
-            ) in enumerate(zip(ba_train_loader, sa_train_loader)):
-            
+            anchor_1_sharp = anchor_1_sharp.to(device)
+            anchor_2_blur = anchor_2_blur.to(device)
+            positive_1_blur = positive_1_blur.to(device)
+            positive_2_sharp = positive_2_sharp.to(device)
+
+
             optimizer.zero_grad()
             
-            # train sharp network
+            sharpnet.train()
+            blurnet.train()
 
-            anchor_sharp_embed = sharpnet(anchor_sharp)
-            with torch.no_grad():
-                blurnet.eval()
-                positive_blur_embed = blurnet(positive_blur)
-                negative_blur_embed = blurnet(negative_blur)
+
+            # train sharp network
+            anchor_sharp_embed = sharpnet(anchor_1_sharp)
+            positive_blur_embed = blurnet(positive_1_blur)
+            negative_blur_embed = blurnet(anchor_2_blur)
             
             sharp_loss = triplet_loss(anchor_sharp_embed, positive_blur_embed, negative_blur_embed)
 
 
             # train blur network
-
-            anchor_blur_embed = blurnet(anchor_blur)
-            with torch.no_grad():
-                sharpnet.eval()
-                positive_sharp_embed = sharpnet(positive_sharp)
-                negative_sharp_embed = sharpnet(negative_sharp)
+            anchor_blur_embed = negative_blur_embed
+            positive_sharp_embed = sharpnet(positive_2_sharp)
+            negative_sharp_embed = anchor_sharp_embed
             
             blur_loss = triplet_loss(anchor_blur_embed, positive_sharp_embed, negative_sharp_embed)
 
@@ -87,12 +78,14 @@ if __name__ == "__main__":
             
             loss.backward()
 
-            losses.append(loss.item())
+            lossval = loss.item()
+            losses.append(lossval)
+            eprint(lossval, end=", ", flush=True)
 
             optimizer.step()
 
-        print(f"Average loss is {statistics.mean(losses)}")
+        eprint(f"Average loss is {statistics.mean(losses)}")
 
-    torch.save(blurnet, "blurnet.pt")
-    torch.save(sharpnet, "sharpnet.pt")
+        torch.save(blurnet, f"blurnet-{datetime.now().day}-{datetime.now().hour}-{epoch}.pt")
+        torch.save(sharpnet, f"sharpnet-{datetime.now().day}-{datetime.now().hour}-{epoch}.pt")
 

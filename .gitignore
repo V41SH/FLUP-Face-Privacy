@@ -7,4 +7,6 @@ __pycache__
 .venv
 blur_evaluation_results/intermediate*.png
 blur_evaluation_results/intermediate*.txt
+arcface_eval_results/intermediate*.png
+arcface_eval_results/intermediate*.txt
 test.py
