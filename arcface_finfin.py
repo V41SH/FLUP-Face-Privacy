@@ -6,6 +6,7 @@ import cv2
 import matplotlib.pyplot as plt
 from PIL import Image
 from tqdm import tqdm
+import torchvision.transforms as transforms
 
 # InsightFace imports
 import insightface
@@ -14,7 +15,9 @@ from utils.blurring_utils import blur_face
 
 # Import the dataloader
 from lfw_double_loader import LFWDatasetDouble, get_lfw_dataloaders
+from celebA_dataloader.dataset import *
 
+# from utils.blurring_utils import *
 """
 Example Usage:
 python arcface_finfin.py --root_dir data/lfw --num_pairs 100 --report_interval 25
@@ -71,6 +74,17 @@ class FaceVerifier:
     def compare_faces(self, img1, img2, blur_type=None, blur_amount=None, is_same_person=True, **kwargs):
         """Compare two face images and return similarity score"""
         # Apply blur if specified
+        if isinstance(img1, torch.Tensor):
+            img1 = img1.detach().cpu().numpy()
+            img1 = np.transpose(img1, (1, 2, 0))
+            img1 = (img1 * 255).clip(0, 255).astype(np.uint8)
+            img1 = Image.fromarray(np.array(img1), "RGB")
+            # img1 = Image.fromarray(np.array(img1), "RGB")
+        if isinstance(img2, torch.Tensor):
+            img2 = img2.detach().cpu().numpy()
+            img2 = np.transpose(img2, (1, 2, 0))
+            img2 = (img2 * 255).clip(0, 255).astype(np.uint8)
+            img2 = Image.fromarray(np.array(img2), "RGB")
 
         if blur_type is not None and blur_amount is not None and blur_amount > 0:
             if blur_type == 'pixelation':
@@ -83,6 +97,9 @@ class FaceVerifier:
         if isinstance(img2, Image.Image):
             img2 = np.array(img2)
             img2 = cv2.cvtColor(img2, cv2.COLOR_RGB2BGR)
+
+        cv2.imwrite("img1.png", img1)
+        cv2.imwrite("img2.png", img2)
         # Get embeddings
         result1 = self.get_face_embedding(img1)
         result2 = self.get_face_embedding(img2)
@@ -326,7 +343,37 @@ def main():
             same_person=False
         )
     elif args.dataset == "celeba": 
-        pass
+        tform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomRotation(10),
+            transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+
+
+        same_person_dataset = CelebADataset(
+            # root_dir=args.root_dir,
+            triplet=True,
+            transform=tform,
+            seed=42,
+            blur_sigma=0,
+            same_person=True,
+            blur_both=None,
+            anchor_blur=None
+        )
+
+        diff_person_dataset = CelebADataset(
+            # root_dir=args.root_dir,
+            triplet=True,
+            transform=tform,
+            seed=42,
+            blur_sigma=0,
+            same_person=False,
+            blur_both=None,
+            anchor_blur=None
+        )
     
     print(f"Evaluating {args.blur_type} blur effects on {args.num_pairs} image pairs (50% same, 50% different)...")
     
