@@ -57,6 +57,7 @@ result_bbox = {}
 for image_path in image_paths:
     img = cv.imread(image_path)
     result_bbox[image_path] = detect_face(img)
+    print(image_path, result_bbox[image_path])
 
 with open('result_bbox.pickle', 'wb') as handle:
     pickle.dump(result_bbox, handle, protocol=pickle.HIGHEST_PROTOCOL)
