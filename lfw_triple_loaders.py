@@ -158,10 +158,10 @@ class LFWDatasetTriple(Dataset):
             positive_2_sharp = self.apply_crop(positive_2_sharp, faces_positive_path_2)
 
         # uncomment to test
-        anchor_1_sharp.show()
-        anchor_2_blur.show()
-        positive_1_blur.show()
-        positive_2_sharp.show()
+        # anchor_1_sharp.show()
+        # anchor_2_blur.show()
+        # positive_1_blur.show()
+        # positive_2_sharp.show()
 
         if self.transform:
             anchor_1_sharp = self.transform(anchor_1_sharp)

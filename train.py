@@ -22,7 +22,7 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 if __name__ == "__main__":
 
     # Model 2
-    train_loader, test_loader, _ = get_lfw_dataloaders("./data/lfw", batch_size=10, blur_sigma=[5,20], randomize_blur=True)
+    train_loader, test_loader, _ = get_lfw_dataloaders("./data/lfw", batch_size=14, blur_sigma=[5,20], randomize_blur=True)
     # Model 3
     # train_loader, test_loader, _ = get_lfw_dataloaders("./data/lfw", batch_size=10, blur_sigma=10, randomize_blur=False,
                                                     #    randomize_crop=True)
