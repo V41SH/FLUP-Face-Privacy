@@ -99,7 +99,7 @@ class FaceVerifier:
         
         # only img1 is blurred bro please bro
         if blur_sigma is not None and blur_sigma>0:
-            img1 = blur_face(img1, blur_sigma)
+            img1 = blur_face(img1,blur_type='gaussian', blur_amount=blur_sigma)
 
         # Get embeddings
         result1 = self.get_face_embedding(img1, model_type="blur")
