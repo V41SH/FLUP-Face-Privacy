@@ -134,27 +134,34 @@ class LFWDatasetTriple(Dataset):
         positive_path_1 = get_same_person(anchor_path_1)
         positive_path_2 = get_same_person(anchor_path_2)
 
-        faces_anchor_path_1 = detect_face(Image.open(anchor_path_1)) 
-        faces_anchor_path_2 = detect_face(Image.open(anchor_path_2)) 
-        faces_positive_path_1 = detect_face(Image.open(positive_path_1)) 
-        faces_positive_path_2  = detect_face(Image.open(positive_path_2)) 
+        image_anchor_path_1 = Image.open(anchor_path_1) 
+        image_anchor_path_2 = Image.open(anchor_path_2) 
+        image_positive_path_1 = Image.open(positive_path_1) 
+        image_positive_path_2  = Image.open(positive_path_2)
+         
+        faces_anchor_path_2 = detect_face(image_anchor_path_2) 
+        faces_positive_path_1 = detect_face(image_positive_path_1) 
         
+        if self.randomize_crop:
+            faces_anchor_path_1 = detect_face(image_anchor_path_1) 
+            faces_positive_path_2  = detect_face(image_positive_path_2)
 
-        anchor_1_sharp = Image.open(anchor_path_1)
-        anchor_2_blur = self.apply_gaussian_blur(Image.open(anchor_path_2).convert('RGB'), faces_anchor_path_2)
-        positive_1_blur = self.apply_gaussian_blur(Image.open(positive_path_1).convert('RGB'), faces_positive_path_1)
-        positive_2_sharp = Image.open(positive_path_2)
+        anchor_1_sharp = image_anchor_path_1
+        anchor_2_blur = self.apply_gaussian_blur(image_anchor_path_2, faces_anchor_path_2)
+        positive_1_blur = self.apply_gaussian_blur(image_anchor_path_1, faces_positive_path_1)
+        positive_2_sharp = image_positive_path_2
 
-        anchor_1_sharp = self.apply_crop(anchor_1_sharp, faces_anchor_path_1)
-        anchor_2_blur = self.apply_crop(anchor_2_blur, faces_anchor_path_2)
-        positive_1_blur = self.apply_crop(positive_1_blur, faces_positive_path_1)
-        positive_2_sharp = self.apply_crop(positive_2_sharp, faces_positive_path_2)
+        if self.randomize_crop:
+            anchor_1_sharp = self.apply_crop(anchor_1_sharp, faces_anchor_path_1)
+            anchor_2_blur = self.apply_crop(anchor_2_blur, faces_anchor_path_2)
+            positive_1_blur = self.apply_crop(positive_1_blur, faces_positive_path_1)
+            positive_2_sharp = self.apply_crop(positive_2_sharp, faces_positive_path_2)
 
         # uncomment to test
-        # anchor_1_sharp.show()
-        # anchor_2_blur.show()
-        # positive_1_blur.show()
-        # positive_2_sharp.show()
+        anchor_1_sharp.show()
+        anchor_2_blur.show()
+        positive_1_blur.show()
+        positive_2_sharp.show()
 
         if self.transform:
             anchor_1_sharp = self.transform(anchor_1_sharp)
@@ -233,7 +240,7 @@ if __name__ == "__main__":
         # blur_sigma=3,
         blur_sigma=[5,20],
         randomize_blur=True,
-        randomize_crop=True
+        # randomize_crop=True
     )
 
     print(f"Dataset loaded successfully with {num_classes} unique individuals")
