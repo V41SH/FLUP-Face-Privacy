@@ -230,6 +230,7 @@ class FaceVerifier:
         plt.plot(blur_levels, [averages[blur]['all'] for blur in blur_levels], marker='*', label='All Pairs')
         plt.xlabel('Blur Level')
         plt.ylabel('Metric Value')
+        plt.ylim(0, 1) 
         plt.title(f'{blur_type.capitalize()} Blur: Face Verification Metrics\n({num_processed} pairs processed)')
         plt.legend()
         plt.grid(True)
@@ -238,6 +239,7 @@ class FaceVerifier:
         plt.plot(blur_levels, [averages[blur]['all'] for blur in blur_levels], marker='o', color='green')
         plt.xlabel('Blur Level')
         plt.ylabel('Average Metric (All Pairs)')
+        plt.ylim(0, 1) 
         plt.title(f'{blur_type.capitalize()} Blur: Overall Average Metric')
         plt.grid(True)
         
@@ -274,6 +276,7 @@ class FaceVerifier:
                 marker='*', label='All Pairs')
         plt.xlabel('Blur Level')
         plt.ylabel('Metric Value')
+        plt.ylim(0, 1) 
         plt.title(f'{blur_type.capitalize()} Blur: Final Face Verification Metrics')
         plt.legend()
         plt.grid(True)
@@ -284,6 +287,7 @@ class FaceVerifier:
                 marker='o', color='green')
         plt.xlabel('Blur Level')
         plt.ylabel('Average Metric (All Pairs)')
+        plt.ylim(0, 1) 
         plt.title(f'{blur_type.capitalize()} Blur: Overall Average Metric')
         plt.grid(True)
         
@@ -358,7 +362,7 @@ def main():
             triplet=True,
             transform=tform,
             seed=42,
-            blur_sigma=0,
+            blur_amount=0,
             same_person=True,
             blur_both=None,
             anchor_blur=None
@@ -369,7 +373,7 @@ def main():
             triplet=True,
             transform=tform,
             seed=42,
-            blur_sigma=0,
+            blur_amount=0,
             same_person=False,
             blur_both=None,
             anchor_blur=None
