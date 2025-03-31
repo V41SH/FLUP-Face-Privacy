@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from utils.blurring_utils import detect_face, blur_face
 from utils.lfw_utils import *
 from utils.env_utils import random_crop_pil as random_crop
-
+import pickle
 
 class LFWDatasetTriple(Dataset):
     """
@@ -20,7 +20,7 @@ class LFWDatasetTriple(Dataset):
     """
 
     def __init__(self, root_dir, csv_file=None, transform=None, train=True, train_ratio=0.8, seed=42
-                 , blur_sigma=3, randomize_blur=False, randomize_crop=False):
+                 , blur_sigma=3, randomize_blur=False, randomize_crop=False, preload_bboxes=True):
         """
         Args:
             root_dir (string): Directory with all the images.
@@ -36,6 +36,7 @@ class LFWDatasetTriple(Dataset):
         self.blur_sigma = blur_sigma
         self.randomize_blur = randomize_blur
         self.randomize_crop = randomize_crop
+        self.preload_bboxes = preload_bboxes
         # Set up paths
         self.people_dir = os.path.join(root_dir, 'lfw-deepfunneled', 'lfw-deepfunneled')
 
@@ -85,6 +86,11 @@ class LFWDatasetTriple(Dataset):
         # Store number of classes
         self.num_classes = len(label_map)
         self.class_names = {v: k for k, v in label_map.items()}
+
+
+        if self.preload_bboxes:
+            with open('result_bbox.pickle', 'rb') as handle:
+                self.bboxes = pickle.load(handle)
 
     def apply_gaussian_blur(self, image, faces=None):
 
@@ -138,13 +144,22 @@ class LFWDatasetTriple(Dataset):
         image_anchor_path_2 = Image.open(anchor_path_2) 
         image_positive_path_1 = Image.open(positive_path_1) 
         image_positive_path_2  = Image.open(positive_path_2)
-         
-        faces_anchor_path_2 = detect_face(image_anchor_path_2) 
-        faces_positive_path_1 = detect_face(image_positive_path_1) 
         
-        if self.randomize_crop:
-            faces_anchor_path_1 = detect_face(image_anchor_path_1) 
-            faces_positive_path_2  = detect_face(image_positive_path_2)
+        if self.preload_bboxes:
+            faces_anchor_path_1 = self.bboxes[anchor_path_1]
+            faces_anchor_path_2 = self.bboxes[anchor_path_2]
+            faces_positive_path_1 = self.bboxes[positive_path_1]
+            faces_positive_path_2 = self.bboxes[positive_path_2]
+
+        else:
+            faces_anchor_path_2 = detect_face(image_anchor_path_2) 
+            faces_positive_path_1 = detect_face(image_positive_path_1) 
+            
+            if self.randomize_crop:
+                faces_anchor_path_1 = detect_face(image_anchor_path_1) 
+                faces_positive_path_2  = detect_face(image_positive_path_2)
+
+
 
         anchor_1_sharp = image_anchor_path_1
         anchor_2_blur = self.apply_gaussian_blur(image_anchor_path_2, faces_anchor_path_2)
