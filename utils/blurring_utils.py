@@ -4,7 +4,13 @@ from PIL import Image, ImageFilter
 import numpy as np
 import sys
 from batch_face import RetinaFace
-detector = RetinaFace(gpu_id=-1)
+
+if torch.cuda.is_available():
+    gpuid = None
+else:
+    gpuid = -1
+
+detector = RetinaFace(gpu_id=gpuid)
 
 def detect_face(image):
     # Convert PIL image to cv2 format (RGB to BGR)

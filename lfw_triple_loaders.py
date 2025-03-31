@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from utils.blurring_utils import detect_face, blur_face
 from utils.lfw_utils import *
 from utils.env_utils import random_crop_pil as random_crop
-
+import pickle
 
 class LFWDatasetTriple(Dataset):
     """
@@ -20,7 +20,7 @@ class LFWDatasetTriple(Dataset):
     """
 
     def __init__(self, root_dir, csv_file=None, transform=None, train=True, train_ratio=0.8, seed=42
-                 , blur_sigma=3, randomize_blur=False, randomize_crop=False):
+                 , blur_sigma=3, randomize_blur=False, randomize_crop=False, preload_bboxes=True):
         """
         Args:
             root_dir (string): Directory with all the images.
@@ -36,6 +36,7 @@ class LFWDatasetTriple(Dataset):
         self.blur_sigma = blur_sigma
         self.randomize_blur = randomize_blur
         self.randomize_crop = randomize_crop
+        self.preload_bboxes = preload_bboxes
         # Set up paths
         self.people_dir = os.path.join(root_dir, 'lfw-deepfunneled', 'lfw-deepfunneled')
 
@@ -85,6 +86,11 @@ class LFWDatasetTriple(Dataset):
         # Store number of classes
         self.num_classes = len(label_map)
         self.class_names = {v: k for k, v in label_map.items()}
+
+
+        if self.preload_bboxes:
+            with open('result_bbox.pickle', 'rb') as handle:
+                self.bboxes = pickle.load(handle)
 
     def apply_gaussian_blur(self, image, faces=None):
 
@@ -138,13 +144,28 @@ class LFWDatasetTriple(Dataset):
         image_anchor_path_2 = Image.open(anchor_path_2) 
         image_positive_path_1 = Image.open(positive_path_1) 
         image_positive_path_2  = Image.open(positive_path_2)
-         
-        faces_anchor_path_2 = detect_face(image_anchor_path_2) 
-        faces_positive_path_1 = detect_face(image_positive_path_1) 
         
-        if self.randomize_crop:
-            faces_anchor_path_1 = detect_face(image_anchor_path_1) 
-            faces_positive_path_2  = detect_face(image_positive_path_2)
+        if self.preload_bboxes:
+            # print("root_dir", self.root_dir)
+            ap1 = anchor_path_1[anchor_path_1.find(self.root_dir):]
+            ap2 = anchor_path_2[anchor_path_2.find(self.root_dir):]
+            ip1 = positive_path_1[positive_path_1.find(self.root_dir):]
+            ip2 = positive_path_2[positive_path_2.find(self.root_dir):]
+
+            faces_anchor_path_1 = self.bboxes[ap1]
+            faces_anchor_path_2 = self.bboxes[ap2]
+            faces_positive_path_1 = self.bboxes[ip1]
+            faces_positive_path_2 = self.bboxes[ip2]
+
+        else:
+            faces_anchor_path_2 = detect_face(image_anchor_path_2) 
+            faces_positive_path_1 = detect_face(image_positive_path_1) 
+            
+            if self.randomize_crop:
+                faces_anchor_path_1 = detect_face(image_anchor_path_1) 
+                faces_positive_path_2  = detect_face(image_positive_path_2)
+
+
 
         anchor_1_sharp = image_anchor_path_1
         anchor_2_blur = self.apply_gaussian_blur(image_anchor_path_2, faces_anchor_path_2)
@@ -197,7 +218,8 @@ def get_transforms(img_size):
     return train_transform, test_transform
 
 def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42,
-                        anchor_blur = False, blur_sigma=None, randomize_blur=False, randomize_crop=False):
+                        anchor_blur = False, blur_sigma=None, randomize_blur=False,
+                        randomize_crop=False, preload_bboxes=True):
     """
     Create train and test dataloaders for the LFW dataset
 
@@ -216,9 +238,11 @@ def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42,
     train_transform, test_transform = get_transforms(img_size=img_size)
     # Create datasets
     train_dataset = LFWDatasetTriple(root_dir=root_dir, transform=train_transform, train=True, seed=seed,
-                                    blur_sigma=blur_sigma, randomize_blur=randomize_blur, randomize_crop=randomize_crop)
+                                    blur_sigma=blur_sigma, randomize_blur=randomize_blur, randomize_crop=randomize_crop,
+                                    preload_bboxes=preload_bboxes)
     test_dataset = LFWDatasetTriple(root_dir=root_dir, transform=test_transform, train=False, seed=seed,
-                                    blur_sigma=blur_sigma, randomize_blur=randomize_blur, randomize_crop=randomize_crop)
+                                    blur_sigma=blur_sigma, randomize_blur=randomize_blur, randomize_crop=randomize_crop,
+                                    preload_bboxes=preload_bboxes)
 
     # Create dataloaders
     #NUM_WORKERS=4
@@ -240,7 +264,8 @@ if __name__ == "__main__":
         # blur_sigma=3,
         blur_sigma=[5,20],
         randomize_blur=True,
-        # randomize_crop=True
+        # randomize_crop=True,
+        preload_bboxes=True
     )
 
     print(f"Dataset loaded successfully with {num_classes} unique individuals")
