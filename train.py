@@ -1,6 +1,9 @@
 import torch
 from slaymodel import SlayNet
 import torch.nn as nn
+
+import torch.nn.functional as F
+
 from torch.optim.adam import Adam
 import statistics
 from datetime import datetime
@@ -70,9 +73,12 @@ if __name__ == "__main__":
             negative_blur_embed = blurnet(anchor_2_blur)
 
             # normalizing
-            anchor_sharp_embed = anchor_sharp_embed / anchor_sharp_embed.norm(dim=-1, keepdim=True) + epslon
-            positive_blur_embed = positive_blur_embed / positive_blur_embed.norm(dim=-1, keepdim=True) + epslon
-            negative_blur_embed - negative_blur_embed / negative_blur_embed.norm(dim=-1, keepdim=True) + epslon
+            # anchor_sharp_embed = anchor_sharp_embed / ( anchor_sharp_embed.norm(dim=-1, keepdim=True) + epslon )
+            # negative_blur_embed - negative_blur_embed / ( negative_blur_embed.norm(dim=-1, keepdim=True) + epslon )
+            # positive_blur_embed = positive_blur_embed / ( positive_blur_embed.norm(dim=-1, keepdim=True) + epslon )
+            anchor_sharp_embed = F.normalize(anchor_sharp_embed)
+            positive_blur_embed = F.normalize(positive_blur_embed)
+            negative_blur_embed = F.normalize(negative_blur_embed)
 
             sharp_loss = triplet_loss(anchor_sharp_embed, positive_blur_embed, negative_blur_embed)
 
@@ -83,7 +89,8 @@ if __name__ == "__main__":
             negative_sharp_embed = anchor_sharp_embed
 
             # normalize normalizing
-            positive_sharp_embed = positive_sharp_embed / positive_sharp_embed.norm(dim=-1, keepdim=True) + epslon
+            positive_sharp_embed = F.normalize(positive_sharp_embed)
+            # positive_sharp_embed = positive_sharp_embed / positive_sharp_embed.norm(dim=-1, keepdim=True) + epslon
 
             blur_loss = triplet_loss(anchor_blur_embed, positive_sharp_embed, negative_sharp_embed)
 
