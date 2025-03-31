@@ -146,10 +146,16 @@ class LFWDatasetTriple(Dataset):
         image_positive_path_2  = Image.open(positive_path_2)
         
         if self.preload_bboxes:
-            faces_anchor_path_1 = self.bboxes[anchor_path_1]
-            faces_anchor_path_2 = self.bboxes[anchor_path_2]
-            faces_positive_path_1 = self.bboxes[positive_path_1]
-            faces_positive_path_2 = self.bboxes[positive_path_2]
+            # print("root_dir", self.root_dir)
+            ap1 = anchor_path_1[anchor_path_1.find(root_dir):]
+            ap2 = anchor_path_2[anchor_path_2.find(root_dir):]
+            ip1 = positive_path_1[positive_path_1.find(root_dir):]
+            ip2 = positive_path_2[positive_path_2.find(root_dir):]
+
+            faces_anchor_path_1 = self.bboxes[ap1]
+            faces_anchor_path_2 = self.bboxes[ap2]
+            faces_positive_path_1 = self.bboxes[ip1]
+            faces_positive_path_2 = self.bboxes[ip2]
 
         else:
             faces_anchor_path_2 = detect_face(image_anchor_path_2) 
@@ -173,10 +179,10 @@ class LFWDatasetTriple(Dataset):
             positive_2_sharp = self.apply_crop(positive_2_sharp, faces_positive_path_2)
 
         # uncomment to test
-        # anchor_1_sharp.show()
-        # anchor_2_blur.show()
-        # positive_1_blur.show()
-        # positive_2_sharp.show()
+        anchor_1_sharp.show()
+        anchor_2_blur.show()
+        positive_1_blur.show()
+        positive_2_sharp.show()
 
         if self.transform:
             anchor_1_sharp = self.transform(anchor_1_sharp)
@@ -212,7 +218,8 @@ def get_transforms(img_size):
     return train_transform, test_transform
 
 def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42,
-                        anchor_blur = False, blur_sigma=None, randomize_blur=False, randomize_crop=False):
+                        anchor_blur = False, blur_sigma=None, randomize_blur=False,
+                        randomize_crop=False, preload_bboxes=True):
     """
     Create train and test dataloaders for the LFW dataset
 
@@ -231,9 +238,11 @@ def get_lfw_dataloaders(root_dir, batch_size=32, img_size=224, seed=42,
     train_transform, test_transform = get_transforms(img_size=img_size)
     # Create datasets
     train_dataset = LFWDatasetTriple(root_dir=root_dir, transform=train_transform, train=True, seed=seed,
-                                    blur_sigma=blur_sigma, randomize_blur=randomize_blur, randomize_crop=randomize_crop)
+                                    blur_sigma=blur_sigma, randomize_blur=randomize_blur, randomize_crop=randomize_crop,
+                                    preload_bboxes=preload_bboxes)
     test_dataset = LFWDatasetTriple(root_dir=root_dir, transform=test_transform, train=False, seed=seed,
-                                    blur_sigma=blur_sigma, randomize_blur=randomize_blur, randomize_crop=randomize_crop)
+                                    blur_sigma=blur_sigma, randomize_blur=randomize_blur, randomize_crop=randomize_crop,
+                                    preload_bboxes=preload_bboxes)
 
     # Create dataloaders
     #NUM_WORKERS=4
@@ -255,7 +264,8 @@ if __name__ == "__main__":
         # blur_sigma=3,
         blur_sigma=[5,20],
         randomize_blur=True,
-        # randomize_crop=True
+        # randomize_crop=True,
+        preload_bboxes=True
     )
 
     print(f"Dataset loaded successfully with {num_classes} unique individuals")
