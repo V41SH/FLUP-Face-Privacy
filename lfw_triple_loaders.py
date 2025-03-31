@@ -147,10 +147,10 @@ class LFWDatasetTriple(Dataset):
         
         if self.preload_bboxes:
             # print("root_dir", self.root_dir)
-            ap1 = anchor_path_1[anchor_path_1.find(root_dir):]
-            ap2 = anchor_path_2[anchor_path_2.find(root_dir):]
-            ip1 = positive_path_1[positive_path_1.find(root_dir):]
-            ip2 = positive_path_2[positive_path_2.find(root_dir):]
+            ap1 = anchor_path_1[anchor_path_1.find(self.root_dir):]
+            ap2 = anchor_path_2[anchor_path_2.find(self.root_dir):]
+            ip1 = positive_path_1[positive_path_1.find(self.root_dir):]
+            ip2 = positive_path_2[positive_path_2.find(self.root_dir):]
 
             faces_anchor_path_1 = self.bboxes[ap1]
             faces_anchor_path_2 = self.bboxes[ap2]
@@ -179,10 +179,10 @@ class LFWDatasetTriple(Dataset):
             positive_2_sharp = self.apply_crop(positive_2_sharp, faces_positive_path_2)
 
         # uncomment to test
-        anchor_1_sharp.show()
-        anchor_2_blur.show()
-        positive_1_blur.show()
-        positive_2_sharp.show()
+        # anchor_1_sharp.show()
+        # anchor_2_blur.show()
+        # positive_1_blur.show()
+        # positive_2_sharp.show()
 
         if self.transform:
             anchor_1_sharp = self.transform(anchor_1_sharp)
