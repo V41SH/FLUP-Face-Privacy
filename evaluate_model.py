@@ -102,7 +102,7 @@ class FaceVerifier:
             img1 = blur_face(img1, blur_sigma)
 
         # Get embeddings
-        result1 = self.get_face_embedding(img1)
+        result1 = self.get_face_embedding(img1, model_type="blur")
         result2 = self.get_face_embedding(img2)
         
         if result1 is None or result2 is None:
