@@ -270,7 +270,8 @@ if __name__ == "__main__":
         blur_sigma=[5,20],
         randomize_blur=True,
         # randomize_crop=True,
-        preload_bboxes=True
+        preload_bboxes=True,
+        tight_crop=True
     )
 
     print(f"Dataset loaded successfully with {num_classes} unique individuals")
