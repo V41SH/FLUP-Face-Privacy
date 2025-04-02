@@ -5,6 +5,9 @@ import random
 
 import random
 from PIL import Image
+import torch
+
+from utils.blurring_utils import detect_face, detector
 
 def random_crop_pil(img, faces, cropping_steps):
     """
@@ -42,6 +45,57 @@ def random_crop_pil(img, faces, cropping_steps):
     min_dist = min(left_dist, right_dist, top_dist, bottom_dist)
 
     i = random.randint(1, cropping_steps)
+
+    crop_amount = (min_dist * i) // cropping_steps
+
+    new_x1 = max(0, x1 - crop_amount)
+    new_y1 = max(0, y1 - crop_amount)
+    new_x2 = min(width, x2 + crop_amount)
+    new_y2 = min(height, y2 + crop_amount)
+
+    crop = img.crop((new_x1, new_y1, new_x2, new_y2))
+
+    return crop
+
+def tight_crop_pil(img, faces=None, cropping_steps=1):
+    """
+    Random crop using PIL without converting to OpenCV.
+    Args:
+        img (PIL.Image): Input image
+        bounding_box (tuple): Bounding box coordinates (x1, y1, x2, y2)
+        cropping_steps (int): Number of cropping steps.
+        final_size (tuple): Dimensions (width, height) to resize all images to.
+                            If None, all images are resized to the smallest cropped size.
+
+    Returns:
+        PIL.Image: Randomly cropped and resized image as PIL Image
+    """
+    if cropping_steps < 1:
+        raise ValueError("cropping_steps must be at least 1")
+
+    if not faces:
+        faces = detect_face(img)
+
+    if not faces:
+        return img
+
+    # getting union of all faces
+    
+    #get largest face 
+    bbox = max(faces, key=lambda box: abs(box[2]-box[0])*abs(box[3]-box[1]))
+
+    x1, y1, x2, y2 = bbox
+
+    width, height = img.size
+
+    # Distance to edges
+    left_dist = x1
+    right_dist = width - x2
+    top_dist = y1
+    bottom_dist = height - y2
+    min_dist = min(left_dist, right_dist, top_dist, bottom_dist)
+
+    i = 0
 
     crop_amount = (min_dist * i) // cropping_steps
 
@@ -218,8 +272,9 @@ if __name__ == "__main__":
 #     import os
 
 #     # Path to an image from the img_celeba folder
-#     current_dir = os.path.dirname(os.path.abspath(__file__))
-#     img_path = os.path.join(current_dir, "..", "celebA", "Img", "img_celeba", "000001.jpg")
+#     # current_dir = os.path.dirname(os.path.abspath(__file__))
+#     # img_path = os.path.join(current_dir, "..", "celebA", "Img", "img_celeba", "000001.jpg")
+#     img_path = "img2.png"
 
 #     # Load the image
 #     img = Image.open(img_path)
@@ -229,4 +284,4 @@ if __name__ == "__main__":
 #     bounding_box = (95, 71, 321, 384)  # Adjust this depending on the image
 
 #     # Visualize 5 progressive crops
-#     visualize_progressive_crops(img, bounding_box, num_results=5)
+# #     visualize_progressive_crops(img, bounding_box, num_results=5)

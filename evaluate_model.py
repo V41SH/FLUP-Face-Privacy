@@ -16,7 +16,8 @@ from lfw_double_loader import LFWDatasetDouble
 from lfw_double_loader import get_lfw_dataloaders as get_double
 from lfw_triple_loaders import get_transforms
 from utils.blurring_utils import blur_face
-
+from utils.env_utils import tight_crop_pil
+import pickle
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -54,6 +55,7 @@ class FaceVerifier:
     def __init__(self, model_configs, det_size=(640, 640)):
         self.models = []
         self.train_transform, self.test_transform = get_transforms(img_size=224)
+        self.tight_crop = True
         
         for config in model_configs:
             model = ModelWrapper(
@@ -71,6 +73,12 @@ class FaceVerifier:
         if blur_sigma is not None and blur_sigma > 0:
             img1 = blur_face(img1, blur_type='gaussian', blur_amount=blur_sigma)
         
+        if self.tight_crop:
+            img1 = tight_crop_pil(img1, None)
+            img2 = tight_crop_pil(img2, None)
+
+
+
         similarities = {}
         for model in self.models:
             # Get embeddings
@@ -259,7 +267,7 @@ class FaceVerifier:
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Evaluate blur effects on face verification')
-    parser.add_argument('--root_dir', type=str, required=True, help='Root directory of the dataset')
+    parser.add_argument('--root_dir', type=str, default="data/lfw", required=False, help='Root directory of the dataset')
     parser.add_argument('--num_pairs', type=int, default=100, help='Number of image pairs to evaluate')
     parser.add_argument('--report_interval', type=int, default=10, help='Interval at which to save intermediate results')
     parser.add_argument('--blur_levels', type=int, nargs='+', default=25, help='Blur levels to evaluate')
@@ -276,14 +284,14 @@ def main():
     model_configs = [
         {
             'name': 'Experiment 4',
-            'sharpnet_path': "/home/salonisaxena/work/Q3/CV/FLUP-Face-Privacy/sharpnet-1-10-49.pt",
-            'blurnet_path': "/home/salonisaxena/work/Q3/CV/FLUP-Face-Privacy/blurnet-1-10-49.pt"
+            'sharpnet_path': "./weights_model2/sharpnet-1-8-49.pt",
+            'blurnet_path': "./weights_model2/blurnet-1-8-49.pt"
         },
-        {
-            'name': 'Experiment 2', 
-            'sharpnet_path': "/home/salonisaxena/work/Q3/CV/FLUP-Face-Privacy/sharpnet-31-21-0(1).pt",
-            'blurnet_path': "/home/salonisaxena/work/Q3/CV/FLUP-Face-Privacy/blurnet-31-21-0(1).pt"
-        },
+        # {
+        #     'name': 'Experiment 2', 
+        #     'sharpnet_path': "./weights_model2/sharpnet-31-21-0.pt",
+        #     'blurnet_path': "./weights_model2/blurnet-31-21-0.pt"
+        # },
     ]
     
     # Initialize face verifier with multiple models
@@ -308,7 +316,8 @@ def main():
         #create celeba dataset here
         pass
     
-    args.num_pairs = min(len(same_person_dataset), len(diff_person_dataset))
+    # args.num_pairs = min(len(same_person_dataset), len(diff_person_dataset))
+    args.num_pairs = 50
 
     print(f"Evaluating blur effects on {args.num_pairs} image pairs...")
     
