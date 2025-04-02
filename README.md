@@ -1,11 +1,11 @@
-# Me when your face
+# How safe is your obfuscation?
 
-Image face go blurrr and camera still know its you. Now that's crazy, let's stop that.
-
+This project explores the level of obfuscation that deep learning models can bypass. We use the state-of-the-art Insightface
+and compare that with our own model named SlayNet.
 
 LFW dataset taken from Kaggle (first hit when you search for it)
 
-Hastily put together by:
+Put together by:
 - Gabriel Hishida
 - Mayank Thakur
 - Saloni Saxena
