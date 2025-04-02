@@ -1,25 +1,53 @@
 Final Results (gaussian blur):
 Blur 0:
-  Same Person:      Mean similarity = 0.4841 (n=35)
-  Different Person: Mean 1-similarity = 0.9839 (n=37)
-  All Pairs:        Mean metric = 0.7409 (n=72)
-Blur 1:
-  Same Person:      Mean similarity = 0.4768 (n=36)
-  Different Person: Mean 1-similarity = 0.9854 (n=37)
-  All Pairs:        Mean metric = 0.7346 (n=73)
-Blur 3:
-  Same Person:      Mean similarity = 0.3923 (n=33)
-  Different Person: Mean 1-similarity = 0.9748 (n=37)
-  All Pairs:        Mean metric = 0.7002 (n=70)
-Blur 5:
-  Same Person:      Mean similarity = 0.2902 (n=32)
-  Different Person: Mean 1-similarity = 0.9770 (n=32)
-  All Pairs:        Mean metric = 0.6336 (n=64)
-Blur 7:
-  Same Person:      Mean similarity = 0.2286 (n=25)
-  Different Person: Mean 1-similarity = 0.9865 (n=23)
-  All Pairs:        Mean metric = 0.5918 (n=48)
+  Same Person:      Mean similarity = 0.6722 (n=49)
+  Different Person: Mean 1-similarity = 1.0065 (n=50)
+  All Pairs:        Mean metric = 0.8410 (n=99)
+Blur 2:
+  Same Person:      Mean similarity = 0.6131 (n=49)
+  Different Person: Mean 1-similarity = 1.0020 (n=50)
+  All Pairs:        Mean metric = 0.8095 (n=99)
+Blur 4:
+  Same Person:      Mean similarity = 0.4248 (n=50)
+  Different Person: Mean 1-similarity = 0.9997 (n=50)
+  All Pairs:        Mean metric = 0.7122 (n=100)
+Blur 6:
+  Same Person:      Mean similarity = 0.2657 (n=50)
+  Different Person: Mean 1-similarity = 0.9940 (n=50)
+  All Pairs:        Mean metric = 0.6298 (n=100)
+Blur 8:
+  Same Person:      Mean similarity = 0.1617 (n=46)
+  Different Person: Mean 1-similarity = 0.9931 (n=41)
+  All Pairs:        Mean metric = 0.5535 (n=87)
 Blur 10:
-  Same Person:      Mean similarity = 0.2360 (n=16)
-  Different Person: Mean 1-similarity = 0.9897 (n=11)
-  All Pairs:        Mean metric = 0.5431 (n=27)
+  Same Person:      Mean similarity = 0.0848 (n=27)
+  Different Person: Mean 1-similarity = 0.9979 (n=22)
+  All Pairs:        Mean metric = 0.4948 (n=49)
+Blur 12:
+  Same Person:      Mean similarity = 0.0157 (n=8)
+  Different Person: Mean 1-similarity = 1.0268 (n=11)
+  All Pairs:        Mean metric = 0.6011 (n=19)
+Blur 14:
+  Same Person:      Mean similarity = -0.0056 (n=5)
+  Different Person: Mean 1-similarity = 1.0301 (n=10)
+  All Pairs:        Mean metric = 0.6848 (n=15)
+Blur 16:
+  Same Person:      Mean similarity = -0.0120 (n=5)
+  Different Person: Mean 1-similarity = 1.0368 (n=7)
+  All Pairs:        Mean metric = 0.5998 (n=12)
+Blur 18:
+  Same Person:      Mean similarity = -0.0055 (n=4)
+  Different Person: Mean 1-similarity = 1.0162 (n=6)
+  All Pairs:        Mean metric = 0.6075 (n=10)
+Blur 20:
+  Same Person:      Mean similarity = -0.0063 (n=5)
+  Different Person: Mean 1-similarity = 1.0015 (n=4)
+  All Pairs:        Mean metric = 0.4416 (n=9)
+Blur 22:
+  Same Person:      Mean similarity = -0.0040 (n=4)
+  Different Person: Mean 1-similarity = 0.9890 (n=3)
+  All Pairs:        Mean metric = 0.4216 (n=7)
+Blur 24:
+  Same Person:      Mean similarity = 0.0582 (n=5)
+  Different Person: Mean 1-similarity = 0.9935 (n=3)
+  All Pairs:        Mean metric = 0.4089 (n=8)

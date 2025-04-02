@@ -25,75 +25,102 @@ Example Usage:
 python arcface_finfin.py --root_dir data/lfw --num_pairs 100 --report_interval 25
 """
 
-class ModelWrapper:
-    def __init__(self, sharpnet_path, blurnet_path, model_name):
-        self.sharpnet = torch.load(sharpnet_path, weights_only=False).to(device)
-        self.blurnet = torch.load(blurnet_path, weights_only=False).to(device)
-        self.model_name = model_name
-        
+class FaceVerifier:
+    def __init__(self, det_size=(640, 640)):
+        # self.app = FaceAnalysis(providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+        # self.app.prepare(ctx_id=0, det_size=det_size)
+        # print("InsightFace initialized successfully.")
+    
+        self.sharpnet = torch.load("/home/salonisaxena/work/Q3/CV/FLUP-Face-Privacy/sharpnet-31-21-0(1).pt", weights_only=False).to(device)
+        self.blurnet = torch.load("/home/salonisaxena/work/Q3/CV/FLUP-Face-Privacy/blurnet-31-21-0(1).pt", weights_only=False).to(device)
+
         self.sharpnet.eval()
         self.blurnet.eval()
-        
-    def get_embedding(self, img, model_type='sharp'):
+
+        self.train_transform, self.test_transform = get_transforms(img_size=224) 
+
+        print("Loaded custom models")
+    
+    def get_face_embedding(self, img, model_type = 'sharp'):
         """Extract face embedding from an image"""
+        
         with torch.no_grad():
             img = self.test_transform(img).to(device).unsqueeze(0)
-            
-            if model_type == 'sharp':
+
+            if model_type=='sharp':
                 embedding = self.sharpnet(img)
             else:
                 embedding = self.blurnet(img)
-                
+
         embedding.requires_grad = False
         return embedding
     
-    def set_transform(self, transform):
-        self.test_transform = transform
+    def blur_face_region(self, img, bbox, sigma=3):
+        """Blur a face region in an image"""
+        # Make a copy to avoid modifying the original
+        result = img.copy()
+        
+        # Extract face coordinates
+        x1, y1, x2, y2 = [int(coord) for coord in bbox]
+        
+        # Extract the face region
+        face_region = result[y1:y2, x1:x2]
+        
+        # Apply Gaussian blur
+        blurred_face = cv2.GaussianBlur(face_region, (0, 0), sigma)
+        
+        # Replace the region in the original image
+        result[y1:y2, x1:x2] = blurred_face
+        
+        return result
 
-class FaceVerifier:
-    def __init__(self, model_configs, det_size=(640, 640)):
-        self.models = []
-        self.train_transform, self.test_transform = get_transforms(img_size=224)
-        
-        for config in model_configs:
-            model = ModelWrapper(
-                sharpnet_path=config['sharpnet_path'],
-                blurnet_path=config['blurnet_path'],
-                model_name=config['name']
-            )
-            model.set_transform(self.test_transform)
-            self.models.append(model)
-        
-        print(f"Loaded {len(self.models)} models")
-    
     def compare_faces(self, img1, img2, blur_sigma=None, is_same_person=True):
-        """Compare two face images and return similarity scores for all models"""
-        if blur_sigma is not None and blur_sigma > 0:
-            img1 = blur_face(img1, blur_type='gaussian', blur_amount=blur_sigma)
+        """Compare two face images and return similarity score"""
+        # # Convert PIL images to numpy arrays if needed
+        # if isinstance(img1, Image.Image):
+        #     img1 = np.array(img1)
+        #     img1 = cv2.cvtColor(img1, cv2.COLOR_RGB2BGR)
+        # if isinstance(img2, Image.Image):
+        #     img2 = np.array(img2)
+        #     img2 = cv2.cvtColor(img2, cv2.COLOR_RGB2BGR)
         
-        similarities = {}
-        for model in self.models:
-            # Get embeddings
-            embedding1 = model.get_embedding(img1, model_type="blur")
-            embedding2 = model.get_embedding(img2, model_type="sharp")
+        # # Apply blur if specified
+        # if blur_sigma is not None and blur_sigma > 0:
+        #     # Detect face first
+        #     faces1 = self.app.get(img1)
+        #     faces2 = self.app.get(img2)
             
-            if embedding1 is None or embedding2 is None:
-                similarities[model.model_name] = None
-                continue
-            
-            # Calculate similarity
-            similarity = self.cosine_similarity(embedding1, embedding2)
-            
-            if not is_same_person:
-                similarity = 1.0 - similarity
-                
-            similarities[model.model_name] = similarity
+        #     if len(faces1) > 0:
+        #         face1 = max(faces1, key=lambda x: x.det_score)
+        #         img1 = self.blur_face_region(img1, face1.bbox, blur_sigma)
+        #     if len(faces2) > 0:
+        #         face2 = max(faces2, key=lambda x: x.det_score)
+        #         img2 = self.blur_face_region(img2, face2.bbox, blur_sigma)
         
-        return similarities
+        # only img1 is blurred bro please bro        
+        if blur_sigma is not None and blur_sigma>0:
+            img1 = blur_face(img1,blur_type='gaussian', blur_amount=blur_sigma)
 
-    def evaluate_blur_effects(self, same_person_dataset, diff_person_dataset, num_pairs=100, 
-                            blur_levels=[0, 1, 3, 5, 7, 10], report_interval=10, 
-                            save_path="arcface_eval_results"):
+        # Get embeddings
+        result1 = self.get_face_embedding(img1, model_type="blur")
+        result2 = self.get_face_embedding(img2)
+        
+        if result1 is None or result2 is None:
+            return None
+        
+        embedding1 = result1
+        embedding2 = result2
+        
+        # Calculate similarity
+        similarity = self.cosine_similarity(embedding1, embedding2)
+
+        if not is_same_person:
+            similarity = 1.0 - similarity
+        
+        return similarity
+
+    def evaluate_blur_effects(self, same_person_dataset, diff_person_dataset, num_pairs=100, blur_levels=[0, 1, 3, 5, 7, 10], 
+                            report_interval=10, save_path="arcface_eval_results"):
         """
         Evaluate blur effects on multiple image pairs from the dataset
         
@@ -105,15 +132,7 @@ class FaceVerifier:
         """
         os.makedirs(save_path, exist_ok=True)
         
-        # Initialize results structure
-        all_results = {
-            model.model_name: {
-                blur: {'same': [], 'diff': [], 'all': []} 
-                for blur in blur_levels
-            } 
-            for model in self.models
-        }
-        
+        all_results = {blur: {'same': [], 'diff': [], 'all': []} for blur in blur_levels}
         intermediate_results = []
         
         num_same_pairs = num_pairs // 2
@@ -123,28 +142,28 @@ class FaceVerifier:
         same_indices = np.random.choice(len(same_person_dataset), num_same_pairs, replace=False)
         diff_indices = np.random.choice(len(diff_person_dataset), num_diff_pairs, replace=False)
         
-        # Evaluate same-person pairs
         for i, idx in enumerate(tqdm(same_indices, desc="Evaluating same-person pairs")):
             img1, img2, name1, name2 = same_person_dataset[idx]
             
+            # Skip if the names don't match (shouldn't happen with same_person=True)
             if name1 != name2:
                 continue
                 
             for blur in blur_levels:
                 blur_sigma = blur if blur > 0 else None
-                similarities = self.compare_faces(img1, img2, blur_sigma, is_same_person=True)
+                similarity = self.compare_faces(img1, img2, blur_sigma, is_same_person=True)
                 
-                for model_name, similarity in similarities.items():
-                    if similarity is not None:
-                        all_results[model_name][blur]['same'].append(similarity)
-                        all_results[model_name][blur]['all'].append(similarity)
+                if similarity is not None:
+                    all_results[blur]['same'].append(similarity)
+                    all_results[blur]['all'].append(similarity)
             
             # Save intermediate results at intervals
             if (i + 1) % report_interval == 0:
                 self._save_intermediate_results(all_results, blur_levels, i + 1, save_path)
-                intermediate_results.append((i + 1, self._get_averages(all_results)))
+                intermediate_results.append((i + 1, {k: {cat: np.mean(scores) for cat, scores in v.items() if scores} 
+                                                for k, v in all_results.items()}))
         
-        # Evaluate different-person pairs
+        # different-person pairs
         total_processed = num_same_pairs
         for i, idx in enumerate(tqdm(diff_indices, desc="Evaluating different-person pairs")):
             img1, img2, name1, name2 = diff_person_dataset[idx]
@@ -154,98 +173,105 @@ class FaceVerifier:
                 
             for blur in blur_levels:
                 blur_sigma = blur if blur > 0 else None
-                similarities = self.compare_faces(img1, img2, blur_sigma, is_same_person=False)
+                similarity = self.compare_faces(img1, img2, blur_sigma, is_same_person=False)
                 
-                for model_name, similarity in similarities.items():
-                    if similarity is not None:
-                        all_results[model_name][blur]['diff'].append(similarity)
-                        all_results[model_name][blur]['all'].append(similarity)
+                if similarity is not None:
+                    all_results[blur]['diff'].append(similarity)
+                    all_results[blur]['all'].append(similarity)
             
             # Save intermediate results at intervals
             current_count = total_processed + i + 1
             if current_count % report_interval == 0 or current_count == num_pairs:
                 self._save_intermediate_results(all_results, blur_levels, current_count, save_path)
-                intermediate_results.append((current_count, self._get_averages(all_results)))
+                intermediate_results.append((current_count, {k: {cat: np.mean(scores) for cat, scores in v.items() if scores} 
+                                                for k, v in all_results.items()}))
         
         self._save_final_results(all_results, blur_levels, save_path)
         
         return all_results, intermediate_results
     
-    def _get_averages(self, results):
-        """Calculate averages for all models and categories"""
-        averages = {}
-        for model_name, model_results in results.items():
-            averages[model_name] = {
-                blur: {
-                    cat: np.mean(scores) if scores else 0 
-                    for cat, scores in categories.items()
-                }
-                for blur, categories in model_results.items()
-            }
-        return averages
-    
     def _save_intermediate_results(self, results, blur_levels, num_processed, save_path):
         """Save intermediate results and plots"""
-        averages = self._get_averages(results)
+        # Calculate current averages
+        averages = {blur: {cat: np.mean(scores) if scores else 0 
+                          for cat, scores in categories.items()}
+                   for blur, categories in results.items()}
         
         # Save numerical results
         with open(os.path.join(save_path, f"intermediate_{num_processed}.txt"), "w") as f:
             f.write(f"Results after {num_processed} pairs:\n")
-            for model_name, model_averages in averages.items():
-                f.write(f"\nModel: {model_name}\n")
-                for blur in blur_levels:
-                    f.write(f"Blur {blur}:\n")
-                    f.write(f"  Same Person:     Mean similarity = {model_averages[blur]['same']:.4f}\n")
-                    f.write(f"  Different Person: Mean 1-similarity = {model_averages[blur]['diff']:.4f}\n")
-                    f.write(f"  All Pairs:        Mean metric = {model_averages[blur]['all']:.4f}\n")
+            for blur in blur_levels:
+                f.write(f"Blur {blur}:\n")
+                f.write(f"  Same Person:     Mean similarity = {averages[blur]['same']:.4f} (n={len(results[blur]['same'])})\n")
+                f.write(f"  Different Person: Mean 1-similarity = {averages[blur]['diff']:.4f} (n={len(results[blur]['diff'])})\n")
+                f.write(f"  All Pairs:        Mean metric = {averages[blur]['all']:.4f} (n={len(results[blur]['all'])})\n")
         
-        # Plot current results - Same Person
-        self._plot_results(averages, blur_levels, num_processed, save_path, 'same', f'Same Person Verification ({num_processed} pairs)')
+        # Plot current results
+        plt.figure(figsize=(12, 8))
         
-        # Plot current results - Different Person
-        self._plot_results(averages, blur_levels, num_processed, save_path, 'diff', f'Different Person Verification ({num_processed} pairs)')
+        # Plot all categories
+        plt.subplot(2, 1, 1)
+        plt.plot(blur_levels, [averages[blur]['same'] for blur in blur_levels], marker='o', label='Same Person')
+        plt.plot(blur_levels, [averages[blur]['diff'] for blur in blur_levels], marker='s', label='Different Person')
+        plt.plot(blur_levels, [averages[blur]['all'] for blur in blur_levels], marker='*', label='All Pairs')
+        plt.xlabel('Blur Sigma')
+        plt.ylabel('Metric Value')
+        plt.title(f'Face Verification Metrics vs. Blur Level\n({num_processed} pairs processed)')
+        plt.legend()
+        plt.grid(True)
+        
+        # Plot only overall average
+        plt.subplot(2, 1, 2)
+        plt.plot(blur_levels, [averages[blur]['all'] for blur in blur_levels], marker='o', color='green')
+        plt.xlabel('Blur Sigma')
+        plt.ylabel('Average Metric (All Pairs)')
+        plt.title('Overall Average Metric vs. Blur Level')
+        plt.grid(True)
+        
+        plt.tight_layout()
+        plt.savefig(os.path.join(save_path, f'intermediate_plot_{num_processed}.png'))
+        plt.close()
     
     def _save_final_results(self, results, blur_levels, save_path):
         """Save final results and plots"""
-        averages = self._get_averages(results)
+        # Calculate final averages
+        averages = {blur: {cat: np.mean(scores) if scores else 0 
+                          for cat, scores in categories.items()}
+                   for blur, categories in results.items()}
         
         # Save numerical results
         with open(os.path.join(save_path, "final_results.txt"), "w") as f:
             f.write("Final Results:\n")
-            for model_name, model_averages in averages.items():
-                f.write(f"\nModel: {model_name}\n")
-                for blur in blur_levels:
-                    f.write(f"Blur {blur}:\n")
-                    f.write(f"  Same Person:     Mean similarity = {model_averages[blur]['same']:.4f}\n")
-                    f.write(f"  Different Person: Mean 1-similarity = {model_averages[blur]['diff']:.4f}\n")
-                    f.write(f"  All Pairs:        Mean metric = {model_averages[blur]['all']:.4f}\n")
+            for blur in blur_levels:
+                f.write(f"Blur {blur}:\n")
+                f.write(f"  Same Person:      Mean similarity = {averages[blur]['same']:.4f} (n={len(results[blur]['same'])})\n")
+                f.write(f"  Different Person: Mean 1-similarity = {averages[blur]['diff']:.4f} (n={len(results[blur]['diff'])})\n")
+                f.write(f"  All Pairs:        Mean metric = {averages[blur]['all']:.4f} (n={len(results[blur]['all'])})\n")
         
-        # Plot final results - Same Person
-        self._plot_results(averages, blur_levels, "final", save_path, 'same', 'Same Person Verification')
+        # Plot final results
+        plt.figure(figsize=(12, 8))
         
-        # Plot final results - Different Person
-        self._plot_results(averages, blur_levels, "final", save_path, 'diff', 'Different Person Verification')
-    
-    def _plot_results(self, averages, blur_levels, num_processed, save_path, category, title):
-        """Helper function to plot results for a specific category"""
-        plt.figure(figsize=(10, 6))
-        
-        for model_name, model_averages in averages.items():
-            plt.plot(
-                blur_levels, 
-                [model_averages[blur][category] for blur in blur_levels], 
-                marker='o', 
-                label=model_name
-            )
-        
+        # Plot all categories
+        plt.subplot(2, 1, 1)
+        plt.plot(blur_levels, [averages[blur]['same'] for blur in blur_levels], marker='o', label='Same Person')
+        plt.plot(blur_levels, [averages[blur]['diff'] for blur in blur_levels], marker='s', label='Different Person')
+        plt.plot(blur_levels, [averages[blur]['all'] for blur in blur_levels], marker='*', label='All Pairs')
         plt.xlabel('Blur Sigma')
-        plt.ylabel('Cosine Similarity' if category == 'same' else '1 - Cosine Similarity')
-        plt.title(title)
+        plt.ylabel('Metric Value')
+        plt.title('Final Face Verification Metrics vs. Blur Level')
         plt.legend()
         plt.grid(True)
         
-        filename = f"{category}_plot_{num_processed}.png"
-        plt.savefig(os.path.join(save_path, filename))
+        # Plot only overall average
+        plt.subplot(2, 1, 2)
+        plt.plot(blur_levels, [averages[blur]['all'] for blur in blur_levels], marker='o', color='green')
+        plt.xlabel('Blur Sigma')
+        plt.ylabel('Average Metric (All Pairs)')
+        plt.title('Overall Average Metric vs. Blur Level')
+        plt.grid(True)
+        
+        plt.tight_layout()
+        plt.savefig(os.path.join(save_path, 'final_plot.png'))
         plt.close()
     
     @staticmethod
@@ -253,6 +279,7 @@ class FaceVerifier:
         a = a.squeeze(0)
         b = b.squeeze(0)
         """Calculate cosine similarity between two vectors"""
+        # return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
         result = torch.dot(a, b) / (torch.linalg.norm(a) * torch.linalg.norm(b))
         return result.cpu().numpy()
 
@@ -262,7 +289,7 @@ def parse_args():
     parser.add_argument('--root_dir', type=str, required=True, help='Root directory of the dataset')
     parser.add_argument('--num_pairs', type=int, default=100, help='Number of image pairs to evaluate')
     parser.add_argument('--report_interval', type=int, default=10, help='Interval at which to save intermediate results')
-    parser.add_argument('--blur_levels', type=int, nargs='+', default=[0, 1, 3, 5, 7, 10], help='Blur levels to evaluate')
+    parser.add_argument('--blur_levels', type=int, nargs='+', default=25, help='Blur levels to evaluate')
     parser.add_argument('--det_size', type=int, default=640, help='Detection size for InsightFace')
     parser.add_argument('--save_path', type=str, default="blur_evaluation_results", help='Directory to save results')
     parser.add_argument('--dataset', type=str, default='lfw', choices=['lfw', 'celeba'], help='Which dataset to use: lfw or celeba')
@@ -272,22 +299,8 @@ def parse_args():
 def main():
     args = parse_args()
     
-    # Define your models here
-    model_configs = [
-        {
-            'name': 'Experiment 4',
-            'sharpnet_path': "./blurnet-1-10-49.pt",
-            'blurnet_path': "./sharpnet-1-10-49.pt"
-        },
-        {
-            'name': 'Experiment 2', 
-            'sharpnet_path': "./blurnet-31-21-0.pt",
-            'blurnet_path': "./sharpnet-31-21-0.pt"
-        },
-    ]
-    
-    # Initialize face verifier with multiple models
-    face_verifier = FaceVerifier(model_configs, det_size=(args.det_size, args.det_size))
+    # Initialize face verifier
+    face_verifier = FaceVerifier(det_size=(args.det_size, args.det_size))
     
     # Create dataset with same_person=True
     if args.dataset == "lfw":
@@ -310,6 +323,10 @@ def main():
     
     print(f"Evaluating blur effects on {args.num_pairs} image pairs...")
     
+    if isinstance(args.blur_levels, int):
+        args.blur_levels = list(range(0, args.blur_levels+1, 2))
+
+
     # Run evaluation
     all_results, intermediate_results = face_verifier.evaluate_blur_effects(
         same_person_dataset=same_person_dataset,
@@ -321,17 +338,15 @@ def main():
     )
     
     print("\nFinal Results:")
-    for model_name, model_results in all_results.items():
-        print(f"\nModel: {model_name}")
-        for blur, categories in model_results.items():
-            same_mean = np.mean(categories['same']) if categories['same'] else 0
-            diff_mean = np.mean(categories['diff']) if categories['diff'] else 0
-            all_mean = np.mean(categories['all']) if categories['all'] else 0
-            
-            print(f"Blur {blur}:")
-            print(f"  Same Person:      Average similarity = {same_mean:.4f}")
-            print(f"  Different Person: Average 1-similarity = {diff_mean:.4f}")
-            print(f"  All Pairs:        Average metric = {all_mean:.4f}")
+    for blur in args.blur_levels:
+        same_mean = np.mean(all_results[blur]['same']) if all_results[blur]['same'] else 0
+        diff_mean = np.mean(all_results[blur]['diff']) if all_results[blur]['diff'] else 0
+        all_mean = np.mean(all_results[blur]['all']) if all_results[blur]['all'] else 0
+        
+        print(f"Blur {blur}:")
+        print(f"  Same Person:      Average similarity = {same_mean:.4f} (n={len(all_results[blur]['same'])})")
+        print(f"  Different Person: Average 1-similarity = {diff_mean:.4f} (n={len(all_results[blur]['diff'])})")
+        print(f"  All Pairs:        Average metric = {all_mean:.4f} (n={len(all_results[blur]['all'])})")
     
     print(f"\nResults saved to {args.save_path}")
 

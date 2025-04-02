@@ -312,7 +312,7 @@ def parse_args():
     parser.add_argument('--root_dir', type=str, required=True, help='Root directory of the dataset')
     parser.add_argument('--num_pairs', type=int, default=100, help='Number of image pairs to evaluate')
     parser.add_argument('--report_interval', type=int, default=10, help='Interval at which to save intermediate results')
-    parser.add_argument('--blur_levels', type=int, nargs='+', default=[0, 1, 3, 5, 7, 10], 
+    parser.add_argument('--blur_levels', type=int, nargs='+', default=25, 
                        help='Blur levels to evaluate (sigma for Gaussian, pixel size for pixelation)')
     # parser.add_argument('--blur_levels', type=int, nargs='+', default=[10, 15, 20, 25, 30, 35, 40],
     #                       help='Blur levels to evaluate (sigma for Gaussian, pixel size for pixelation)')
@@ -381,6 +381,9 @@ def main():
     
     print(f"Evaluating {args.blur_type} blur effects on {args.num_pairs} image pairs (50% same, 50% different)...")
     
+    if isinstance(args.blur_levels, int):
+        args.blur_levels = list(range(0, args.blur_levels+1, 2))
+
     # For black blur, we only need to evaluate once (amount doesn't matter)
     if args.blur_type == 'black':
         blur_levels = [0, 1]  # 0=no blur, 1=black blur
