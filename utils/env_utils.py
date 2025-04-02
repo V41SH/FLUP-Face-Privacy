@@ -22,6 +22,8 @@ def random_crop_pil(img, faces, cropping_steps):
     if cropping_steps < 1:
         raise ValueError("cropping_steps must be at least 1")
 
+    if not faces:
+        return img
 
     # getting union of all faces
     

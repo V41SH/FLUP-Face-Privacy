@@ -104,7 +104,7 @@ class LFWDatasetTriple(Dataset):
                 minsig, maxsig = 5 , 20
 
             sigma = random.randint(minsig, maxsig)
-            print(sigma)
+            # print(sigma)
             return blur_face(image, blur_type='gaussian', blur_amount=sigma, faces=faces)
 
         else:

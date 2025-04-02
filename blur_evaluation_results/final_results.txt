@@ -1,7 +1,53 @@
 Final Results:
-Blur 0: Mean similarity = 0.6328 (n=99)
-Blur 1: Mean similarity = 0.6334 (n=99)
-Blur 3: Mean similarity = 0.5061 (n=99)
-Blur 5: Mean similarity = 0.3259 (n=99)
-Blur 7: Mean similarity = 0.1905 (n=95)
-Blur 10: Mean similarity = 0.0773 (n=42)
+
+Model: Experiment 4
+Blur 0:
+  Same Person:     Mean similarity = 0.7936
+  Different Person: Mean 1-similarity = 0.9882
+  All Pairs:        Mean metric = 0.8909
+Blur 1:
+  Same Person:     Mean similarity = 0.7907
+  Different Person: Mean 1-similarity = 0.9780
+  All Pairs:        Mean metric = 0.8843
+Blur 3:
+  Same Person:     Mean similarity = 0.7627
+  Different Person: Mean 1-similarity = 0.9388
+  All Pairs:        Mean metric = 0.8508
+Blur 5:
+  Same Person:     Mean similarity = 0.7328
+  Different Person: Mean 1-similarity = 0.9159
+  All Pairs:        Mean metric = 0.8243
+Blur 7:
+  Same Person:     Mean similarity = 0.7226
+  Different Person: Mean 1-similarity = 0.9034
+  All Pairs:        Mean metric = 0.8130
+Blur 10:
+  Same Person:     Mean similarity = 0.7181
+  Different Person: Mean 1-similarity = 0.9004
+  All Pairs:        Mean metric = 0.8093
+
+Model: Experiment 2
+Blur 0:
+  Same Person:     Mean similarity = 0.6529
+  Different Person: Mean 1-similarity = 1.0502
+  All Pairs:        Mean metric = 0.8515
+Blur 1:
+  Same Person:     Mean similarity = 0.6309
+  Different Person: Mean 1-similarity = 1.0589
+  All Pairs:        Mean metric = 0.8449
+Blur 3:
+  Same Person:     Mean similarity = 0.5847
+  Different Person: Mean 1-similarity = 1.0683
+  All Pairs:        Mean metric = 0.8265
+Blur 5:
+  Same Person:     Mean similarity = 0.5754
+  Different Person: Mean 1-similarity = 1.0626
+  All Pairs:        Mean metric = 0.8190
+Blur 7:
+  Same Person:     Mean similarity = 0.5728
+  Different Person: Mean 1-similarity = 1.0618
+  All Pairs:        Mean metric = 0.8173
+Blur 10:
+  Same Person:     Mean similarity = 0.5841
+  Different Person: Mean 1-similarity = 1.0626
+  All Pairs:        Mean metric = 0.8233
