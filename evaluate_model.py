@@ -262,7 +262,7 @@ def parse_args():
     parser.add_argument('--root_dir', type=str, required=True, help='Root directory of the dataset')
     parser.add_argument('--num_pairs', type=int, default=100, help='Number of image pairs to evaluate')
     parser.add_argument('--report_interval', type=int, default=10, help='Interval at which to save intermediate results')
-    parser.add_argument('--blur_levels', type=int, nargs='+', default=[0, 1, 3, 5, 7, 10], help='Blur levels to evaluate')
+    parser.add_argument('--blur_levels', type=int, nargs='+', default=25, help='Blur levels to evaluate')
     parser.add_argument('--det_size', type=int, default=640, help='Detection size for InsightFace')
     parser.add_argument('--save_path', type=str, default="blur_evaluation_results", help='Directory to save results')
     parser.add_argument('--dataset', type=str, default='lfw', choices=['lfw', 'celeba'], help='Which dataset to use: lfw or celeba')
@@ -276,13 +276,13 @@ def main():
     model_configs = [
         {
             'name': 'Experiment 4',
-            'sharpnet_path': "./blurnet-1-10-49.pt",
-            'blurnet_path': "./sharpnet-1-10-49.pt"
+            'sharpnet_path': "/home/salonisaxena/work/Q3/CV/FLUP-Face-Privacy/sharpnet-1-10-49.pt",
+            'blurnet_path': "/home/salonisaxena/work/Q3/CV/FLUP-Face-Privacy/blurnet-1-10-49.pt"
         },
         {
             'name': 'Experiment 2', 
-            'sharpnet_path': "./blurnet-31-21-0.pt",
-            'blurnet_path': "./sharpnet-31-21-0.pt"
+            'sharpnet_path': "/home/salonisaxena/work/Q3/CV/FLUP-Face-Privacy/sharpnet-31-21-0(1).pt",
+            'blurnet_path': "/home/salonisaxena/work/Q3/CV/FLUP-Face-Privacy/blurnet-31-21-0(1).pt"
         },
     ]
     
@@ -308,8 +308,13 @@ def main():
         #create celeba dataset here
         pass
     
+    args.num_pairs = min(len(same_person_dataset), len(diff_person_dataset))
+
     print(f"Evaluating blur effects on {args.num_pairs} image pairs...")
     
+    if isinstance(args.blur_levels, int):
+        args.blur_levels = list(range(0, args.blur_levels+1, 2))
+
     # Run evaluation
     all_results, intermediate_results = face_verifier.evaluate_blur_effects(
         same_person_dataset=same_person_dataset,
