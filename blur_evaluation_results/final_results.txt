@@ -1,6 +1,6 @@
 Final Results:
 
-Model: Experiment 4
+Model: Tight Crop
 Blur 0:
   Same Person:     Mean similarity = 0.5883
   Different Person: Mean 1-similarity = 0.6413
