@@ -5,11 +5,9 @@ celebA
 landmark.txt
 __pycache__
 .venv
-blur_evaluation_results/intermediate*.png
-blur_evaluation_results/intermediate*.txt
-blur_evaluation_results/raw*
-arcface_eval_results/intermediate*.png
-arcface_eval_results/intermediate*.txt
-arcface_eval_results/raw*
+blur_evaluation_results/
+arcface_eval_results/
+blurnet*
+sharpnet*
 test.py
 *.pt
