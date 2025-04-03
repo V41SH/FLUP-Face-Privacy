@@ -148,9 +148,9 @@ class FaceVerifier:
                         all_results[model_name][blur]['all'].append(similarity)
             
             # Save intermediate results at intervals
-            if (i + 1) % report_interval == 0:
-                self._save_intermediate_results(all_results, blur_levels, i + 1, save_path)
-                intermediate_results.append((i + 1, self._get_averages(all_results)))
+            # if (i + 1) % report_interval == 0:
+                # self._save_intermediate_results(all_results, blur_levels, i + 1, save_path)
+                # intermediate_results.append((i + 1, self._get_averages(all_results)))
         
         # Evaluate different-person pairs
         total_processed = num_same_pairs
@@ -171,9 +171,9 @@ class FaceVerifier:
             
             # Save intermediate results at intervals
             current_count = total_processed + i + 1
-            if current_count % report_interval == 0 or current_count == num_pairs:
-                self._save_intermediate_results(all_results, blur_levels, current_count, save_path)
-                intermediate_results.append((current_count, self._get_averages(all_results)))
+            # if current_count % report_interval == 0 or current_count == num_pairs:
+                # self._save_intermediate_results(all_results, blur_levels, current_count, save_path)
+                # intermediate_results.append((current_count, self._get_averages(all_results)))
         
         self._save_final_results(all_results, blur_levels, save_path)
         
@@ -284,8 +284,8 @@ def main():
     model_configs = [
         {
             'name': 'Experiment 4',
-            'sharpnet_path': "./weights_model2/sharpnet-1-8-49.pt",
-            'blurnet_path': "./weights_model2/blurnet-1-8-49.pt"
+            'sharpnet_path': "./sharpnet-3-4-20.pt",
+            'blurnet_path': "./blurnet-3-4-20.pt"
         },
         # {
         #     'name': 'Experiment 2', 
@@ -316,8 +316,8 @@ def main():
         #create celeba dataset here
         pass
     
-    # args.num_pairs = min(len(same_person_dataset), len(diff_person_dataset))
-    args.num_pairs = 50
+    args.num_pairs = min(len(same_person_dataset), len(diff_person_dataset))
+    # args.num_pairs = 50
 
     print(f"Evaluating blur effects on {args.num_pairs} image pairs...")
     
