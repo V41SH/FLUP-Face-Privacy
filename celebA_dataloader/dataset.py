@@ -43,7 +43,7 @@ class CelebADataset(Dataset):
 
         with open(os.path.join(self.img_dir, "../../Anno/identity_CelebA.txt"), "r") as file:
             lines = file.readlines()
-            self.identity = {line.split()[0]: int(line.split()[1]) for line in lines[2:]}
+            self.identity = {line.split()[0]: int(line.split()[1]) for line in lines}
 
         with open(os.path.join(self.img_dir, "../../Anno/list_bbox_celeba.txt"), "r") as file:
             lines = file.readlines()

@@ -361,7 +361,8 @@ def main():
             train=False
         )
     
-    args.num_pairs = min(len(same_person_dataset), len(diff_person_dataset))
+    # args.num_pairs = min(len(same_person_dataset), len(diff_person_dataset))
+    args.num_pairs = 1800
 
     print(f"Evaluating blur effects on {args.num_pairs} image pairs...")
     
