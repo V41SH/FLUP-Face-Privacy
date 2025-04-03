@@ -6,6 +6,7 @@ import cv2
 import matplotlib.pyplot as plt
 from PIL import Image
 from tqdm import tqdm
+import torchvision.transforms as transforms
 
 # InsightFace imports
 import insightface
@@ -16,9 +17,11 @@ from lfw_double_loader import LFWDatasetDouble
 from lfw_double_loader import get_lfw_dataloaders as get_double
 from lfw_triple_loaders import get_transforms
 from utils.blurring_utils import blur_face
+from celebA_dataloader.dataset import *
 
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+# print(device)
 
 """
 Example Usage:
@@ -31,8 +34,12 @@ class FaceVerifier:
         # self.app.prepare(ctx_id=0, det_size=det_size)
         # print("InsightFace initialized successfully.")
     
-        self.sharpnet = torch.load("./sharpnet-29-9-19.pt", weights_only=False).to(device)
-        self.blurnet = torch.load("./blurnet-29-9-19.pt", weights_only=False).to(device)
+        # self.sharpnet = torch.load("./sharpnet-1-10-49.pt", weights_only=False).to(device)
+        # self.blurnet = torch.load("./blurnet-1-10-49.pt", weights_only=False).to(device)
+        # self.sharpnet = torch.load("./sharpnet-1-10-49.pt", weights_only=False, map_location=device)
+        # self.blurnet = torch.load("./blurnet-1-10-49.pt", weights_only=False, map_location=device)
+        # self.sharpnet = torch.load("./sharpnet-1-8-49.pt", weights_only=False, map_location=device)
+        # self.blurnet = torch.load("./blurnet-1-8-49.pt", weights_only=False, map_location=device)
 
         self.sharpnet.eval()
         self.blurnet.eval()
@@ -97,9 +104,30 @@ class FaceVerifier:
         #         face2 = max(faces2, key=lambda x: x.det_score)
         #         img2 = self.blur_face_region(img2, face2.bbox, blur_sigma)
         
-        # only img1 is blurred bro please bro
+
+        if isinstance(img1, torch.Tensor):
+            img1 = img1.detach().cpu().numpy()
+            img1 = np.transpose(img1, (1, 2, 0))
+            img1 = (img1 * 255).clip(0, 255).astype(np.uint8)
+            img1 = Image.fromarray(np.array(img1), "RGB")
+            # img1 = Image.fromarray(np.array(img1), "RGB")
+        if isinstance(img2, torch.Tensor):
+            img2 = img2.detach().cpu().numpy()
+            img2 = np.transpose(img2, (1, 2, 0))
+            img2 = (img2 * 255).clip(0, 255).astype(np.uint8)
+            img2 = Image.fromarray(np.array(img2), "RGB")
+
         if blur_sigma is not None and blur_sigma>0:
             img1 = blur_face(img1,blur_type='gaussian', blur_amount=blur_sigma)
+        
+        # if isinstance(img1, Image.Image):
+        #     img1 = np.array(img1)
+        #     img1 = cv2.cvtColor(img1, cv2.COLOR_RGB2BGR)
+        # if isinstance(img2, Image.Image):
+        #     img2 = np.array(img2)
+        #     img2 = cv2.cvtColor(img2, cv2.COLOR_RGB2BGR)
+        
+        # only img1 is blurred bro please bro
 
         # Get embeddings
         result1 = self.get_face_embedding(img1, model_type="blur")
@@ -318,8 +346,37 @@ def main():
             same_person=False #different pairs
         )
     elif args.dataset == "celeba": 
-        #create celeba dataset here
-        pass
+        tform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomRotation(10),
+            transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+
+
+        same_person_dataset = CelebADataset(
+            # root_dir=args.root_dir,
+            triplet=True,
+            transform=tform,
+            seed=42,
+            blur_amount=0,
+            same_person=True,
+            blur_both=None,
+            anchor_blur=None
+        )
+
+        diff_person_dataset = CelebADataset(
+            # root_dir=args.root_dir,
+            triplet=True,
+            transform=tform,
+            seed=42,
+            blur_amount=0,
+            same_person=False,
+            blur_both=None,
+            anchor_blur=None
+        )
     
     print(f"Evaluating blur effects on {args.num_pairs} image pairs...")
     

@@ -1,7 +1,25 @@
 Final Results:
-Blur 0: Mean similarity = 0.6328 (n=99)
-Blur 1: Mean similarity = 0.6334 (n=99)
-Blur 3: Mean similarity = 0.5061 (n=99)
-Blur 5: Mean similarity = 0.3259 (n=99)
-Blur 7: Mean similarity = 0.1905 (n=95)
-Blur 10: Mean similarity = 0.0773 (n=42)
+Blur 0:
+  Same Person:      Mean similarity = 0.4623 (n=50)
+  Different Person: Mean 1-similarity = 0.6583 (n=50)
+  All Pairs:        Mean metric = 0.5603 (n=100)
+Blur 1:
+  Same Person:      Mean similarity = 0.4786 (n=50)
+  Different Person: Mean 1-similarity = 0.6448 (n=50)
+  All Pairs:        Mean metric = 0.5617 (n=100)
+Blur 3:
+  Same Person:      Mean similarity = 0.4672 (n=50)
+  Different Person: Mean 1-similarity = 0.6743 (n=50)
+  All Pairs:        Mean metric = 0.5708 (n=100)
+Blur 5:
+  Same Person:      Mean similarity = 0.4626 (n=50)
+  Different Person: Mean 1-similarity = 0.6770 (n=50)
+  All Pairs:        Mean metric = 0.5698 (n=100)
+Blur 7:
+  Same Person:      Mean similarity = 0.4590 (n=50)
+  Different Person: Mean 1-similarity = 0.6762 (n=50)
+  All Pairs:        Mean metric = 0.5676 (n=100)
+Blur 10:
+  Same Person:      Mean similarity = 0.4600 (n=50)
+  Different Person: Mean 1-similarity = 0.6731 (n=50)
+  All Pairs:        Mean metric = 0.5665 (n=100)

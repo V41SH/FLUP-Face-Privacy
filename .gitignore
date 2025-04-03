@@ -12,3 +12,4 @@ arcface_eval_results/intermediate*.png
 arcface_eval_results/intermediate*.txt
 arcface_eval_results/raw*
 test.py
+*.pt

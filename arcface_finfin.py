@@ -98,8 +98,8 @@ class FaceVerifier:
             img2 = np.array(img2)
             img2 = cv2.cvtColor(img2, cv2.COLOR_RGB2BGR)
 
-        cv2.imwrite("img1.png", img1)
-        cv2.imwrite("img2.png", img2)
+        # cv2.imwrite("img1.png", img1)
+        # cv2.imwrite("img2.png", img2)
         # Get embeddings
         result1 = self.get_face_embedding(img1)
         result2 = self.get_face_embedding(img2)
