@@ -1,0 +1,55 @@
+Final Results:
+
+Model: Tight Crop
+Blur 0:
+  Same Person:     Mean similarity = 0.5883
+  Different Person: Mean 1-similarity = 0.6413
+  All Pairs:        Mean metric = 0.6148
+Blur 2:
+  Same Person:     Mean similarity = 0.6993
+  Different Person: Mean 1-similarity = 0.7318
+  All Pairs:        Mean metric = 0.7156
+Blur 4:
+  Same Person:     Mean similarity = 0.6878
+  Different Person: Mean 1-similarity = 0.7648
+  All Pairs:        Mean metric = 0.7264
+Blur 6:
+  Same Person:     Mean similarity = 0.5768
+  Different Person: Mean 1-similarity = 0.6498
+  All Pairs:        Mean metric = 0.6133
+Blur 8:
+  Same Person:     Mean similarity = 0.5461
+  Different Person: Mean 1-similarity = 0.6690
+  All Pairs:        Mean metric = 0.6076
+Blur 10:
+  Same Person:     Mean similarity = 0.5151
+  Different Person: Mean 1-similarity = 0.7097
+  All Pairs:        Mean metric = 0.6124
+Blur 12:
+  Same Person:     Mean similarity = 0.4854
+  Different Person: Mean 1-similarity = 0.7431
+  All Pairs:        Mean metric = 0.6143
+Blur 14:
+  Same Person:     Mean similarity = 0.4623
+  Different Person: Mean 1-similarity = 0.7627
+  All Pairs:        Mean metric = 0.6126
+Blur 16:
+  Same Person:     Mean similarity = 0.4469
+  Different Person: Mean 1-similarity = 0.7744
+  All Pairs:        Mean metric = 0.6108
+Blur 18:
+  Same Person:     Mean similarity = 0.4375
+  Different Person: Mean 1-similarity = 0.7818
+  All Pairs:        Mean metric = 0.6097
+Blur 20:
+  Same Person:     Mean similarity = 0.4304
+  Different Person: Mean 1-similarity = 0.7868
+  All Pairs:        Mean metric = 0.6087
+Blur 22:
+  Same Person:     Mean similarity = 0.4230
+  Different Person: Mean 1-similarity = 0.7907
+  All Pairs:        Mean metric = 0.6070
+Blur 24:
+  Same Person:     Mean similarity = 0.4157
+  Different Person: Mean 1-similarity = 0.7915
+  All Pairs:        Mean metric = 0.6037
