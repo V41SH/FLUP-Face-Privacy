@@ -30,8 +30,10 @@ python arcface_finfin.py --root_dir data/lfw --num_pairs 100 --report_interval 2
 
 class ModelWrapper:
     def __init__(self, sharpnet_path, blurnet_path, model_name):
-        self.sharpnet = torch.load(sharpnet_path, weights_only=False).to(device)
-        self.blurnet = torch.load(blurnet_path, weights_only=False).to(device)
+        # self.sharpnet = torch.load(sharpnet_path, weights_only=False).to(device)
+        # self.blurnet = torch.load(blurnet_path, weights_only=False).to(device)
+        self.sharpnet = torch.load(sharpnet_path, weights_only=False, map_location=device)
+        self.blurnet = torch.load(blurnet_path, weights_only=False, map_location=device)
         self.model_name = model_name
         
         self.sharpnet.eval()
@@ -72,9 +74,6 @@ class FaceVerifier:
     def compare_faces(self, img1, img2, blur_sigma=None, is_same_person=True):
         """Compare two face images and return similarity scores for all models"""
 
-        if blur_sigma is not None and blur_sigma > 0:
-            img1 = blur_face(img1, blur_type='gaussian', blur_amount=blur_sigma)
-        
         if isinstance(img1, torch.Tensor):
             img1 = img1.detach().cpu().numpy()
             img1 = np.transpose(img1, (1, 2, 0))
@@ -84,9 +83,12 @@ class FaceVerifier:
         if isinstance(img2, torch.Tensor):
             img2 = img2.detach().cpu().numpy()
             img2 = np.transpose(img2, (1, 2, 0))
-            
             img2 = (img2 * 255).clip(0, 255).astype(np.uint8)
             img2 = Image.fromarray(np.array(img2), "RGB")
+
+        if blur_sigma is not None and blur_sigma > 0:
+            img1 = blur_face(img1, blur_type='gaussian', blur_amount=blur_sigma)
+        
         similarities = {}
         for model in self.models:
             # Get embeddings
@@ -292,13 +294,17 @@ def main():
     model_configs = [
         {
             'name': 'Experiment 4',
-            'sharpnet_path': "/home/salonisaxena/work/Q3/CV/FLUP-Face-Privacy/sharpnet-1-10-49.pt",
-            'blurnet_path': "/home/salonisaxena/work/Q3/CV/FLUP-Face-Privacy/blurnet-1-10-49.pt"
+            # 'sharpnet_path': "/home/salonisaxena/work/Q3/CV/FLUP-Face-Privacy/sharpnet-1-10-49.pt",
+            # 'blurnet_path': "/home/salonisaxena/work/Q3/CV/FLUP-Face-Privacy/blurnet-1-10-49.pt"
+            'sharpnet_path': "sharpnet-1-8-49.pt",
+            'blurnet_path': "blurnet-1-8-49.pt"
         },
         {
             'name': 'Experiment 2', 
-            'sharpnet_path': "/home/salonisaxena/work/Q3/CV/FLUP-Face-Privacy/sharpnet-31-21-0(1).pt",
-            'blurnet_path': "/home/salonisaxena/work/Q3/CV/FLUP-Face-Privacy/blurnet-31-21-0(1).pt"
+            # 'sharpnet_path': "/home/salonisaxena/work/Q3/CV/FLUP-Face-Privacy/sharpnet-31-21-0(1).pt",
+            # 'blurnet_path': "/home/salonisaxena/work/Q3/CV/FLUP-Face-Privacy/blurnet-31-21-0(1).pt"
+            'sharpnet_path': "sharpnet-1-8-49.pt",
+            'blurnet_path': "blurnet-1-8-49.pt"
         },
     ]
     
@@ -339,7 +345,8 @@ def main():
             blur_amount=0,
             same_person=True,
             blur_both=None,
-            anchor_blur=None
+            anchor_blur=None,
+            train=False
         )
 
         diff_person_dataset = CelebADataset(
@@ -350,7 +357,8 @@ def main():
             blur_amount=0,
             same_person=False,
             blur_both=None,
-            anchor_blur=None
+            anchor_blur=None,
+            train=False
         )
     
     args.num_pairs = min(len(same_person_dataset), len(diff_person_dataset))
