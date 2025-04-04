@@ -285,9 +285,11 @@ def main():
     # Define your models here
     model_configs = [
         {
-            'name': 'Experiment 4',
-            'sharpnet_path': "./weights_model2/sharpnet-1-8-49.pt",
-            'blurnet_path': "./weights_model2/blurnet-1-8-49.pt"
+            'name': 'All Surrounding (epoch20)',
+            # 'sharpnet_path': "./weights_model2/sharpnet-1-8-49.pt",
+            'sharpnet_path': "./weights_model2/sharpnet-1-2-20.pt",
+            # 'blurnet_path': "./weights_model2/blurnet-1-8-49.pt"
+            'blurnet_path': "./weights_model2/blurnet-1-2-20.pt"
         },
         # {
         #     'name': 'Experiment 2', 
