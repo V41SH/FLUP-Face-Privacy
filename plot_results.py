@@ -6,6 +6,8 @@ files = {
         "eval_results/eval_arcface.txt": ("o", "solid"),
         "eval_results/eval_model2.txt": ("X", "dashed"),
         "eval_results/random_crop_random_blur.txt": ("X", "dashed"),
+        "eval_results/model3_20.txt": ("X", "dashed"),
+        "eval_results/model3_49.txt": ("X", "dashed"),
         # "eval_results/random_crop_random_blur_20.txt": ("X", "dashed"),
          }
 
@@ -32,9 +34,9 @@ for file in files:
     while lines:
         line = lines.pop(0)
         print(line)
-        line = line.strip()[:-1]
         if not line:
             break
+        line = line.strip()[:-1]
         _, blur_level = line.split()
         for metric in (same_person, diff_person, all_pairs):
             line = lines.pop(0)
