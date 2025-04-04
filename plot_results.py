@@ -1,7 +1,12 @@
 import matplotlib.pyplot as plt
 
 
-files = ["eval_results/eval_tight.txt", "eval_results/eval_arcface.txt"] 
+files = {
+        "eval_results/eval_tight.txt": ("o", "solid"),
+        "eval_results/eval_arcface.txt": ("o", "solid"),
+        "eval_results/eval_model2.txt": ("X", "dashed"),
+        "eval_results/random_crop_random_blur.txt": ("X", "dashed"),
+         }
 
 model_vals = {}
 
@@ -45,7 +50,8 @@ for idx, metric in enumerate(("same", "diff", "all")):
 
     for file in files:
         plt.plot(model_vals[file][metric].keys(), model_vals[file][metric].values(),
-                 marker='o', label=model_vals[file]["label"], linewidth=3)
+                 marker=files[file][0], linestyle=files[file][1],
+                 label=model_vals[file]["label"], linewidth=3)
 
     
     plt.xlabel('Blur Sigma')
@@ -53,6 +59,7 @@ for idx, metric in enumerate(("same", "diff", "all")):
     plt.title(titles[idx])
     plt.legend()
     plt.grid(True)
-    plt.ylim(0.0,0.8)
+    plt.ylim(0.0,1)
+    # plt.ylim(0.0,0.8)
 
     plt.show()

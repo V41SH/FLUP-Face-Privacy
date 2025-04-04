@@ -1,6 +1,6 @@
 Final Results:
 
-Model: Experiment 4
+Model: All Surroundings
 Blur 0:
   Same Person:     Mean similarity = 0.8215
   Different Person: Mean 1-similarity = 1.0106

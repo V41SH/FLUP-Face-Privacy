@@ -37,6 +37,7 @@ class ModelWrapper:
         
     def get_embedding(self, img, model_type='sharp'):
         """Extract face embedding from an image"""
+
         with torch.no_grad():
             img = self.test_transform(img).to(device).unsqueeze(0)
             
@@ -55,7 +56,8 @@ class FaceVerifier:
     def __init__(self, model_configs, det_size=(640, 640)):
         self.models = []
         self.train_transform, self.test_transform = get_transforms(img_size=224)
-        self.tight_crop = True
+        # self.tight_crop = True
+        self.tight_crop = False
         
         for config in model_configs:
             model = ModelWrapper(
@@ -284,8 +286,8 @@ def main():
     model_configs = [
         {
             'name': 'Experiment 4',
-            'sharpnet_path': "./sharpnet-3-4-20.pt",
-            'blurnet_path': "./blurnet-3-4-20.pt"
+            'sharpnet_path': "./weights_model2/sharpnet-1-8-49.pt",
+            'blurnet_path': "./weights_model2/blurnet-1-8-49.pt"
         },
         # {
         #     'name': 'Experiment 2', 
@@ -316,8 +318,8 @@ def main():
         #create celeba dataset here
         pass
     
-    args.num_pairs = min(len(same_person_dataset), len(diff_person_dataset))
-    # args.num_pairs = 50
+    # args.num_pairs = min(len(same_person_dataset), len(diff_person_dataset))
+    args.num_pairs = 1800
 
     print(f"Evaluating blur effects on {args.num_pairs} image pairs...")
     

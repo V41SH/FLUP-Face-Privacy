@@ -121,7 +121,7 @@ class FaceVerifier:
 
     def evaluate_blur_effects(self, same_person_dataset, diff_person_dataset, num_pairs=100, 
                             # blur_levels=[0, 1, 3, 5, 7, 10], 
-                            blur_levels=[0, 1, 3, 5, 7, 10],
+                            blur_levels=range(0, 25, 2),
                             report_interval=10, save_path="arcface_eval_results",
                             blur_type='gaussian', **kwargs):
         """
@@ -309,13 +309,14 @@ class FaceVerifier:
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Evaluate blur effects on face verification')
-    parser.add_argument('--root_dir', type=str, required=True, help='Root directory of the dataset')
+    # parser.add_argument('--root_dir', type=str, required=True, help='Root directory of the dataset')
+    parser.add_argument('--root_dir', type=str, required=False, default="data/lfw", help='Root directory of the dataset')
     parser.add_argument('--num_pairs', type=int, default=100, help='Number of image pairs to evaluate')
     parser.add_argument('--report_interval', type=int, default=10, help='Interval at which to save intermediate results')
-    parser.add_argument('--blur_levels', type=int, nargs='+', default=[0, 1, 3, 5, 7, 10], 
-                       help='Blur levels to evaluate (sigma for Gaussian, pixel size for pixelation)')
-    # parser.add_argument('--blur_levels', type=int, nargs='+', default=[10, 15, 20, 25, 30, 35, 40],
-    #                       help='Blur levels to evaluate (sigma for Gaussian, pixel size for pixelation)')
+    # parser.add_argument('--blur_levels', type=int, nargs='+', default=[0, 1, 3, 5, 7, 10], 
+                    #    help='Blur levels to evaluate (sigma for Gaussian, pixel size for pixelation)')
+    parser.add_argument('--blur_levels', type=int, nargs='+', default=range(0,25,2),
+                          help='Blur levels to evaluate (sigma for Gaussian, pixel size for pixelation)')
     parser.add_argument('--det_size', type=int, default=640, help='Detection size for InsightFace')
     parser.add_argument('--save_path', type=str, default="arcface_eval_results", help='Directory to save results')
     parser.add_argument('--dataset', type=str, default='lfw', choices=['lfw', 'celeba'], help='Which dataset to use: lfw or celeba')
