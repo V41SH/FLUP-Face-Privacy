@@ -45,7 +45,7 @@ for idx, metric in enumerate(("same", "diff", "all")):
 
     for file in files:
         plt.plot(model_vals[file][metric].keys(), model_vals[file][metric].values(),
-                 marker='o', label=model_vals[file]["label"])
+                 marker='o', label=model_vals[file]["label"], linewidth=3)
 
     
     plt.xlabel('Blur Sigma')
@@ -53,6 +53,6 @@ for idx, metric in enumerate(("same", "diff", "all")):
     plt.title(titles[idx])
     plt.legend()
     plt.grid(True)
-    plt.ylim(-0.2,1.2)
+    plt.ylim(0.0,0.8)
 
     plt.show()
