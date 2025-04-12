@@ -10,3 +10,5 @@ Put together by:
 - Mayank Thakur
 - Saloni Saxena
 - Vaishnav Srinidhi
+
+Model weights can be found [here](https://mega.nz/file/axtTGBxJ#tE0_d8Y7W5mg-AK0vr1JLREHuWLhLhGTyxml5qCWtAI).
